@@ -1,0 +1,18 @@
+1. Preprocessing did not remove patients with no notes. Causing the `TextTSIrgcollate_fn` in `data.py` to not work as batch is empty
+
+Changes:
+    1. Under `preprocessing.py` the `merge_text_ts` function, added a `new_tslist` at line 343 to store only patients with notes.
+
+
+2. In model training, when running `evaluate_irg` in `train.py`. It will run into segmentation fault while iterating through the `val_dataloader`.
+    Look at `fyp/multi_modal/MultimodalMIMIC/error/error_fyp_multimodal_76146.err` for trace.
+
+Changes:
+    1. Commented out line 151 to 153. Stack trace from `faulthandler` points to those lines.
+
+
+3. Segmentation Fault in pt 2 was a result of having `nan` as output in the logits during evaluation even though there is no nan in the inputs.
+
+
+Changes:
+    1. During the calculation of the respective score, I removed the nan values. Changes are made in `train.py` in line 212 to 219.

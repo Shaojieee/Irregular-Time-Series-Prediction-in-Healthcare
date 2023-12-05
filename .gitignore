@@ -9,7 +9,9 @@ mimic_iii*
 forecast_datasets
 mortality_datasets
 logs
-
+Data
+run
+tensorboard_dir
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
