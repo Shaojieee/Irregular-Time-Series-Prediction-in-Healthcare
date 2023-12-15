@@ -6,6 +6,7 @@ import math
 from module import *
 from interp import *
 import copy
+
 class BertForRepresentation(nn.Module):
 
     def __init__(self, args,BioBert):
@@ -266,7 +267,7 @@ class MULTCrossModel(nn.Module):
                                         q_seq_len_1=q_seq_len)
 
 
-
+    # Time 2 Vec calculations
     def learn_time_embedding(self, tt):
         tt = tt.to(self.device)
         tt = tt.unsqueeze(-1)

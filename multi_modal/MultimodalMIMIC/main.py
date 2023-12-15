@@ -56,6 +56,7 @@ def main():
         copy_file(args.ck_file_path+'model/', src=os.getcwd())
     if args.mode=='train':
         if 'Text' in args.modeltype:
+            # Under utils
             BioBert, BioBertConfig,tokenizer=loadBert(args,device)
         else:
             BioBert,tokenizer=None,None
@@ -72,6 +73,8 @@ def main():
     print(f'Device:{device}')
 
     print(model)
+    total_params = sum(p.numel() for p in model.parameters())
+    print(f'Total number of parameters: {total_params}')
 
     if args.modeltype=='TS':
         optimizer = torch.optim.Adam(model.parameters(), lr=args.ts_learning_rate)

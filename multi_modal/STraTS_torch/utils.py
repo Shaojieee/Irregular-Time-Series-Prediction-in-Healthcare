@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
-from sklearn.metrics import roc_auc_score, precision_recall_curve, auc
+from sklearn.metrics import roc_auc_score, precision_recall_curve, auc, f1_score
 from datetime import datetime
 import time
 import json
@@ -30,6 +30,17 @@ def parse_args():
     parser.add_argument(
         "--forecast_model_weights", type=str, default=None, help="forecasting_model or mortality_model"
     )
+    parser.add_argument('--with_text', action='store_true')
+    parser.add_argument(
+        "--text_padding",
+        action='store_true'
+    )
+    parser.add_argument(
+        "--text_max_length",
+        type=int,
+        default=1024,
+        help="mMximum total input sequence length after tokenization. Sequences longer than this will be truncated,sequences shorter will be padded if `--text_padding` is passed.",
+    )
     parser.add_argument(
         "--d",
         type=int,
@@ -55,10 +66,64 @@ def parse_args():
         help="Learning Rate",
     )
     parser.add_argument(
-        "--learning_rate",
+        "--text_num_notes",
+        type=int,
+        default=5,
+        help="Maximum no. of notes to use",
+    )
+    parser.add_argument(
+        "--text_atten_embed_dim",
+        type=int,
+        default=30,
+        help="Text embedding output dim",
+    )
+    parser.add_argument(
+        "--text_time_embed_dim",
+        type=int,
+        default=64,
+        help="Time embedding output dim",
+    )
+    parser.add_argument(
+        "--period_length",
+        type=int,
+        default=48,
+        help="Max hours of data to use",
+    )
+    parser.add_argument(
+        "--text_encoder_model",
+        type=str,
+        default='bioLongformer',
+        help="Text Encoder Model to use",
+    )
+    parser.add_argument(
+        "--num_cross_layers",
+        type=int,
+        default=3,
+        help="No. of cross layers",
+    )
+    parser.add_argument(
+        "--num_cross_heads",
+        type=int,
+        default=8,
+        help="No. of heads in cross attention",
+    )
+    parser.add_argument(
+        "--cross_dropout",
+        type=float,
+        default=0.10,
+        help="Dropout in the cross layer and output linear stack",
+    )
+    parser.add_argument(
+        "--ts_learning_rate",
         type=float,
         default=0.0005,
-        help="Learning Rate",
+        help="Time Series Learning Rate",
+    )
+    parser.add_argument(
+        "--text_learning_rate",
+        type=float,
+        default=0.00002,
+        help="Text Model Learning Rate",
     )
     parser.add_argument(
         "--patience",
@@ -108,8 +173,6 @@ def parse_args():
     )
     parser.add_argument("--num_epochs", type=int, default=10, help="Total number of training epochs to perform.")
 
-  
-
     args = parser.parse_args()
 
     return args
@@ -132,7 +195,10 @@ def mortality_results(y_true, y_pred, **kwargs):
     min_rp = np.minimum(precision, recall).max()
     roc_auc = roc_auc_score(y_true, y_pred)
     bce_loss = torch.nn.functional.binary_cross_entropy(y_pred, y_true).item()
-    return {'PR_AUC': pr_auc, 'ROC_AUC': roc_auc, 'MIN_RP': min_rp, 'LOSS': bce_loss}
+
+    f1 = f1_score(y_true, (y_pred>0.5))
+
+    return {'PR_AUC': pr_auc, 'ROC_AUC': roc_auc, 'MIN_RP': min_rp, 'LOSS': bce_loss, 'F1': f1}
 
 
 class EvaluationCallback():

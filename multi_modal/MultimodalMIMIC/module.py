@@ -177,10 +177,6 @@ class multiTimeAttention(nn.Module):
 
 
 
-
-
-
-
 class MultiheadAttention(nn.Module):
     """Multi-headed attention.
     See "Attention Is All You Need" for more details.
@@ -611,7 +607,7 @@ class TransformerCrossEncoderLayer(nn.Module):
         x_list[1]=F.dropout(x_list[1], p=self.res_dropout , training=self.training)
 
         x_list = [r + x  for r, x in zip(residual, x_list) ]
-#         x_list = [l(x) for l, x in zip(self.post_self_attn_layer_norm, x_list)]
+        # x_list = [l(x) for l, x in zip(self.post_self_attn_layer_norm, x_list)]
 
         #### cross attn
 
@@ -638,7 +634,7 @@ class TransformerCrossEncoderLayer(nn.Module):
 
         x_list = [r+ x for r, x in zip(residual, (x_ts_to_txt, x_txt_to_ts))]
 
-#         x_list = [l(x) for l, x in zip(self.post_encoder_attn_layer_norm, x_list)]
+        # x_list = [l(x) for l, x in zip(self.post_encoder_attn_layer_norm, x_list)]
 
         # FNN
         residual = x_list
@@ -655,7 +651,7 @@ class TransformerCrossEncoderLayer(nn.Module):
 
         x_list = [r + x  for r, x in zip(residual, x_list) ]
 
-#         x_list = [l(x) for l, x in zip(self.post_ffn_layer_norm, x_list)]
+        # x_list = [l(x) for l, x in zip(self.post_ffn_layer_norm, x_list)]
 
 
         return x_list

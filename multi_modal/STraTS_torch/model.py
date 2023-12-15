@@ -106,8 +106,10 @@ class Transformer(nn.Module):
     def forward(self, X, mask, mask_value=-1e-30):
         mask = torch.unsqueeze(mask, dim=-2)
         
+        # N times of transformer
         for i in range(self.N):
             mha_ops = []
+            # h heads for multi headed attention
             for j in range(self.h):
                 q = torch.matmul(X, self.Wq[i,j,:,:])
                 k = torch.matmul(X, self.Wk[i,j,:,:]).permute(0,2,1)
@@ -163,18 +165,24 @@ class Transformer(nn.Module):
             X = X*self.gamma[2*i+1] + self.beta[2*i+1]
         return X            
 
-# TODO: Remove max_lenz
+
 class STraTS(nn.Module):
-    def __init__(self, D, max_len, V, d, N, he, dropout, forecast=False):
+    def __init__(self, D, V, d, N, he, dropout, forecast=False, return_embeddings=False):
         super(STraTS, self).__init__()
         total_parameters = 0
         cve_units = int(np.sqrt(d))
+
+        self.D = D
+        self.return_embeddings = return_embeddings
+
         # Inputs: max_len * batch_size
+        # To embed which feature is this value representing
         self.varis_stack = nn.Embedding(V+1, d)
         # num_params = sum(p.numel() for p in self.varis_stack.parameters())
         # print(f'varis_stack: {num_params}')
         # total_parameters += num_params
         
+        # FFN to 'encode' the continuous values. Continuous Value Embedding (CVE)
         self.values_stack = CVE(
             hid_dim=cve_units, 
             output_dim=d
@@ -183,6 +191,7 @@ class STraTS(nn.Module):
         # print(f'values_stack: {num_params}')
         # total_parameters += num_params
         
+        # FFN to 'encode' the continuous values. Continuous Value Embedding (CVE)
         self.times_stack = CVE(
             hid_dim=cve_units, 
             output_dim=d
@@ -218,25 +227,34 @@ class STraTS(nn.Module):
         
         # Demographics Input : batch_size * D
         # Demographics Output: batch_size * d
-        self.demo_stack = nn.Sequential(
-            nn.Linear(in_features=D, out_features=2*d),
-            nn.Tanh(),
-            nn.Linear(in_features=2*d, out_features=d),
-            nn.Tanh()
-        )
+        if self.D>0:
+            self.demo_stack = nn.Sequential(
+                nn.Linear(in_features=D, out_features=2*d),
+                nn.Tanh(),
+                nn.Linear(in_features=2*d, out_features=d),
+                nn.Tanh()
+            )
         # num_params = sum(p.numel() for p in self.demo_stack.parameters())
         # print(f'demo_stack: {num_params}')
         # total_parameters += num_params
         
         # Output Layer Inputs: Attention Weight * Time Series Embedding + Demographic Encoding = batch_size * (+d)
-        if forecast:
-            self.output_stack = nn.Linear(in_features=d+d, out_features=V)
-        else:
-            self.output_stack = nn.Sequential(
-                nn.Linear(in_features=d+d, out_features=1),
-                nn.Sigmoid(),
-                nn.Flatten(start_dim=0)
-            )
+        if not self.return_embeddings:
+            if forecast:
+                self.output_stack = nn.Linear(in_features=d+d, out_features=V)
+            else:
+                if self.D>0:
+                    self.output_stack = nn.Sequential(
+                        nn.Linear(in_features=d+d, out_features=1),
+                        nn.Sigmoid(),
+                        nn.Flatten(start_dim=0)
+                    )
+                else:
+                    self.output_stack = nn.Sequential(
+                        nn.Linear(in_features=d, out_features=1),
+                        nn.Sigmoid(),
+                        nn.Flatten(start_dim=0)
+                    )
         # num_params = sum(p.numel() for p in self.output_stack.parameters())
         # print(f'output_stack: {num_params}')
         # total_parameters += num_params
@@ -245,7 +263,9 @@ class STraTS(nn.Module):
     
     def forward(self, demo, times, values, varis):
         
-        demo_enc = self.demo_stack(demo)
+        if self.D>0:
+            demo_enc = self.demo_stack(demo)
+
         varis_emb = self.varis_stack(varis)
         values_emb = self.values_stack(values)
         times_emb = self.times_stack(times)
@@ -258,7 +278,6 @@ class STraTS(nn.Module):
         
         mask = torch.clamp(varis, 0,1)
         # print(f'Mask: {mask.shape}')
-        
         cont_emb = self.cont_stack(comb_emb, mask)
         # print(f'cont_emb: {cont_emb.shape}')
         
@@ -271,11 +290,17 @@ class STraTS(nn.Module):
         # print(f'fused_emb: {fused_emb.shape}')
         
         # Combining Time Series Embedding with Demographic Embeddings
-        conc = torch.cat([fused_emb, demo_enc], dim=-1)
+        if self.D>0:
+            conc = torch.cat([fused_emb, demo_enc], dim=-1)
+        else:
+            conc = fused_emb
         # print(f'conc: {conc.shape}')
         
         # Generating Output
-        output = self.output_stack(conc)
+        if self.return_embeddings:
+            output = conc 
+        else:
+            output = self.output_stack(conc)
         # print(f'output: {output.shape}')
         
         return output

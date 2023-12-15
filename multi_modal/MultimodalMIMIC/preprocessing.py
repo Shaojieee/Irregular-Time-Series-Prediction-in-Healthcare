@@ -234,6 +234,8 @@ def extract_irregular(dataPath_in,dataPath_out):
         data_i['reg_ts']=reg_data[p_id]
         data_i['name']=names[p_id]
         data_i['label']=y[p_id]
+
+        # Hours rounds to 2 dp
         data_i['ts_tt']=tt
         data_i['irg_ts']=np.array(features_list)
         data_i['irg_ts_mask']=np.array(features_mask_list)
@@ -267,8 +269,6 @@ def mean_std(dataPath_in,dataPath_out):
         for ts in reg_ts:
             for f_idx, (val, mask_val) in enumerate(zip(ts[:reg_f_num//2], ts[reg_f_num//2:])):
                 reg_feature_list[f_idx].append(val)
-        
-
 
 
     irg_means=[]
@@ -463,7 +463,7 @@ if __name__ == "__main__":
             text_reader = TextReader(test_textdata_fixed, test_starttime_path)
         
         data_text, data_times, data_time = text_reader.read_all_text_append_json(names, args.period_length)
-        merge_text_ts(data_text, data_times, data_time,tsdata, args.period_length,output_dir+mode+'p2x_data.pkl')
+        merge_text_ts(data_text, data_times, data_time, tsdata, args.period_length,output_dir+mode+'p2x_data.pkl')
         
 
 
