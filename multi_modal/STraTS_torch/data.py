@@ -1,4 +1,5 @@
 from torch.utils.data import Dataset
+from torch.nn.utils.rnn import pad_sequence
 import torch
 import pickle
 import gzip
@@ -21,8 +22,9 @@ class MultipleInputsDataset(Dataset):
         self.has_text = X_text_tokens!=None
 
         if self.has_text:
-            self.X_text_tokens = torch.tensor(X_text_tokens, dtype=torch.long)
-            self.X_text_attention_mask = torch.tensor(X_text_attention_mask, dtype=torch.long)
+            # X_text_tokens is a list of list of tensor. Cannot convert to tensor as text tokens are not yet padded. Will be padded in DataLoader
+            self.X_text_tokens = X_text_tokens
+            self.X_text_attention_mask = X_text_attention_mask
             self.X_text_times = torch.tensor(X_text_times, dtype=torch.float)
             self.X_text_time_mask = torch.tensor(X_text_time_mask, dtype=torch.long)
     
@@ -341,7 +343,7 @@ def load_mortality_dataset(data_dir, with_text=False, tokenizer=None, text_paddi
         has_demos = False
 
     datasets_ = {}
-    for mode in ['train','val', 'test']:
+    for mode in ['train', 'val', 'test']:
         
         with gzip.GzipFile(f'{data_dir}/{mode}_times.npy.gz', 'r') as f:
             times = np.load(f)
@@ -359,54 +361,65 @@ def load_mortality_dataset(data_dir, with_text=False, tokenizer=None, text_paddi
             demos = np.zeros(y.shape)
 
         if with_text:
-            texts = pickle.load(open(f'{data_dir}/{mode}_texts.pkl', 'rb'))
-            text_time_to_end = pickle.load(open(f'{data_dir}/{mode}_text_times.pkl', 'rb'))
+            raw_texts = pickle.load(open(f'{data_dir}/{mode}_texts.pkl', 'rb'))
+            raw_text_time_to_end = pickle.load(open(f'{data_dir}/{mode}_text_times.pkl', 'rb'))
         else:
-            texts, text_time_to_end = None, None
+            raw_texts, raw_text_time_to_end = None, None
 
-    
+
         if with_text:
-            print(texts)
-            print(text_time_to_end)
-            text_time_to_end=[1-t/period_length for t in text_time_to_end]
-            text_time_mask=[1]*len(text_time_to_end)
+            all_text_time_to_end = []
+            all_text_time_mask = []
+            all_text_token = []
+            all_text_atten_mask = []
+            for texts, times in tqdm(zip(raw_texts, raw_text_time_to_end)):
+                text_time_to_end = []
+                text_time_mask = []
+                text_token=[]
+                text_atten_mask=[]
+                for text, time in zip(texts, times):
 
-            text_token=[]
-            text_atten_mask=[]
-            for text in texts:
-                inputs = tokenizer.encode_plus(
-                    text, 
-                    padding='max_length' if text_padding else False,
-                    max_length=text_max_len,
-                    add_special_tokens=True,
-                    return_attention_mask = True,
-                    truncation=True
-                )
+                    text_time_to_end.append(1-time/period_length)
+                    text_time_mask.append(1)
 
-                text_token.append(torch.tensor(inputs['input_ids'],dtype=torch.long))
-                attention_mask=inputs['attention_mask']
-                if "Longformer" in text_model :
+                    inputs = tokenizer.encode_plus(
+                        text, 
+                        padding='max_length' if text_padding else False,
+                        max_length=text_max_len,
+                        add_special_tokens=True,
+                        return_attention_mask = True,
+                        truncation=True
+                    )
 
-                    attention_mask[0]+=1
-                    text_atten_mask.append(torch.tensor(attention_mask,dtype=torch.long))
-                else:
-                    text_atten_mask.append(torch.tensor(attention_mask,dtype=torch.long))
-            
-            while len(text_token)<num_notes:
-                text_token.append(torch.tensor([0],dtype=torch.long))
-                text_atten_mask.append(torch.tensor([0],dtype=torch.long))
-                text_time_to_end.append(0)
-                text_time_mask.append(0)
-            
-            text_token = text_token[-num_notes:]
-            text_atten_mask = text_atten_mask[-num_notes:]
-            text_time_to_end = text_time_mask[-num_notes:]
-            text_time_mask = text_time_mask[-num_notes:]
+                    text_token.append(torch.tensor(inputs['input_ids'],dtype=torch.long))
+                    attention_mask=inputs['attention_mask']
+                    if "Longformer" in text_model :
+
+                        attention_mask[0]+=1
+                        text_atten_mask.append(torch.tensor(attention_mask,dtype=torch.long))
+                    else:
+                        text_atten_mask.append(torch.tensor(attention_mask,dtype=torch.long))
+                
+                while len(text_token)<num_notes:
+                    text_token.append(torch.tensor([0],dtype=torch.long))
+                    text_atten_mask.append(torch.tensor([0],dtype=torch.long))
+                    text_time_to_end.append(0)
+                    text_time_mask.append(0)
+                
+                text_token = text_token[-num_notes:]
+                text_atten_mask = text_atten_mask[-num_notes:]
+                text_time_to_end = text_time_to_end[-num_notes:]
+                text_time_mask = text_time_mask[-num_notes:]
+
+                all_text_token.append(text_token)
+                all_text_atten_mask.append(text_atten_mask)
+                all_text_time_to_end.append(text_time_to_end)
+                all_text_time_mask.append(text_time_mask)
         else:
-            text_token = None
-            text_atten_mask = None
-            text_time_to_end = None
-            text_time_mask = None
+            all_text_token = None
+            all_text_atten_mask = None
+            all_text_time_to_end = None
+            all_text_time_mask = None
 
 
         dataset = MultipleInputsDataset(
@@ -415,10 +428,10 @@ def load_mortality_dataset(data_dir, with_text=False, tokenizer=None, text_paddi
             X_values=values, 
             X_varis=varis, 
             Y=y,
-            X_text_tokens=text_token,
-            X_text_attention_mask=text_atten_mask,
-            X_text_times=text_time_to_end,
-            X_text_time_mask=text_time_mask,
+            X_text_tokens=all_text_token,
+            X_text_attention_mask=all_text_atten_mask,
+            X_text_times=all_text_time_to_end,
+            X_text_time_mask=all_text_time_mask,
         )
 
         datasets_[mode] = dataset
@@ -605,11 +618,16 @@ def pad_text_data(batch):
     X_text_tokens = [pad_sequence(tokens, batch_first=True, padding_value=0).transpose(0,1) for tokens in X_text_tokens]
     X_text_attention_mask = [pad_sequence(atten, batch_first=True, padding_value=0).transpose(0,1) for atten in X_text_attention_mask]
 
+    X_text_tokens = pad_sequence(X_text_attention_mask, batch_first=True, padding_value=0).transpose(1,2)
     X_text_attention_mask = pad_sequence(X_text_attention_mask, batch_first=True, padding_value=0).transpose(1,2)
-    X_text_attention_mask = pad_sequence(X_text_attention_mask, batch_first=True, padding_value=0).transpose(1,2)
+
+    print(X_text_tokens.shape)
+    print(X_text_attention_mask.shape)
 
     X_text_times = pad_sequence([torch.tensor(time, dtype=torch.float) for time in X_text_times],batch_first=True,padding_value=0)
     X_text_time_mask = pad_sequence([torch.tensor(time_mask, dtype=torch.long) for time_mask in X_text_time_mask],batch_first=True,padding_value=0)
 
+    print(X_text_tokens.shape)
+    print(X_text_attention_mask.shape)
 
     return X_demos, X_times, X_values, X_varis, Y, X_text_tokens, X_text_attention_mask, X_text_times, X_text_time_mask

@@ -1,5 +1,6 @@
 from model import STraTS
 import torch.nn as nn
+import torch
 from transformers import AutoTokenizer, AutoModel, AutoConfig, BertTokenizer, BertModel
 
 def load_Bert(text_encoder_model):
