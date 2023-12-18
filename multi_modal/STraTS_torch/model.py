@@ -34,6 +34,21 @@ class CVE(nn.Module):
         return self.stack(X)
 
 
+class TVE(nn.Module):
+    def __init__(self, hid_dim, output_dim, input_dim=768):
+        super(TVE, self).__init__()
+        self.stack = nn.Sequential(
+            nn.Linear(in_features=input_dim, out_features=hid_dim, bias=True),
+            nn.Tanh(),
+            nn.Linear(in_features=hid_dim, out_features=output_dim, bias=False)
+        )
+        self.stack.apply(initialise_linear_layer)
+        
+    def forward(self, X):
+        # X = X.unsqueeze(dim=-1)
+        return self.stack(X)
+
+
 class Attention(nn.Module):
     def __init__(self, d, hid_dim):
         super(Attention, self).__init__()
@@ -166,12 +181,57 @@ class Transformer(nn.Module):
         return X            
 
 
+class BertForRepresentation(nn.Module):
+
+    def __init__(self, model, model_name):
+        super().__init__()
+
+        self.model = model
+        self.dropout = torch.nn.Dropout(model.config.hidden_dropout_prob)
+        self.model_name = model_name
+
+    def forward(self, input_ids_sequence, attention_mask_sequence, sent_idx_list=None , doc_idx_list=None):
+        txt_arr = []
+
+        for input_ids,attention_mask in zip(input_ids_sequence,attention_mask_sequence):
+
+            if 'Longformer' in self.model_name:
+
+                attention_mask-=1
+                text_embeddings=self.model(input_ids, global_attention_mask=attention_mask)
+
+            else:
+                text_embeddings=self.model(input_ids, attention_mask=attention_mask)
+
+            text_embeddings= text_embeddings[0][:,0,:]
+            text_embeddings = self.dropout(text_embeddings)
+            txt_arr.append(text_embeddings)
+
+        txt_arr=torch.stack(txt_arr)
+        return txt_arr
+
+
 class STraTS(nn.Module):
-    def __init__(self, D, V, d, N, he, dropout, forecast=False, return_embeddings=False):
+    def __init__(
+            self, 
+            D, 
+            V, 
+            d, 
+            N, 
+            he, 
+            dropout, 
+            with_text=False,
+            text_encoder=None,
+            text_encoder_name=None,
+            text_linear_embed_dim=None,
+            forecast=False, 
+            return_embeddings=False
+        ):
         super(STraTS, self).__init__()
         total_parameters = 0
         cve_units = int(np.sqrt(d))
 
+        self.with_text = with_text
         self.D = D
         self.return_embeddings = return_embeddings
 
@@ -181,7 +241,17 @@ class STraTS(nn.Module):
         # num_params = sum(p.numel() for p in self.varis_stack.parameters())
         # print(f'varis_stack: {num_params}')
         # total_parameters += num_params
-        
+
+        if self.with_text:
+            self.text_encoder = BertForRepresentation(text_encoder, text_encoder_name)
+            # num_params = sum(p.numel() for p in self.text_encoder.parameters())
+            # print(f'text_encoder: {num_params}')
+            # total_parameters += num_params
+            self.text_stack = TVE(text_linear_embed_dim, d)
+            # num_params = sum(p.numel() for p in self.text_linear_stack.parameters())
+            # print(f'text_linear_stack: {num_params}')
+            # total_parameters += num_params
+
         # FFN to 'encode' the continuous values. Continuous Value Embedding (CVE)
         self.values_stack = CVE(
             hid_dim=cve_units, 
@@ -261,21 +331,41 @@ class STraTS(nn.Module):
         
         # print(f'Total Parameters: {total_parameters}')
     
-    def forward(self, demo, times, values, varis):
+    def forward(self, demo, times, values, varis, text_values=None, text_attention_mask=None, text_times=None, text_varis=None):
         
         if self.D>0:
             demo_enc = self.demo_stack(demo)
 
-        varis_emb = self.varis_stack(varis)
-        values_emb = self.values_stack(values)
-        times_emb = self.times_stack(times)
-        # print(f'varis_emb: {varis_emb.shape}')
-        # print(f'values_emb: {values_emb.shape}')
-        # print(f'times_emb: {times_emb.shape}')
+        ts_varis_emb = self.varis_stack(varis)
+        ts_values_emb = self.values_stack(values)
+        ts_times_emb = self.times_stack(times)
+        # print(f'ts_varis_emb: {ts_varis_emb.shape}')
+        # print(f'ts_values_emb: {ts_values_emb.shape}')
+        # print(f'ts_times_emb: {ts_times_emb.shape}')
+
+
+        if self.with_text:
+            text_varis_emb = self.varis_stack(text_varis)
+            # print(f'text_varis_emb: {text_varis_emb.shape}')
+            text_values_emb = self.text_encoder(text_values, text_attention_mask)
+            # print(f'text_values_emb: {text_values_emb.shape}')
+            text_values_emb = self.text_stack(text_values_emb)
+            # print(f'text_values_emb: {text_values_emb.shape}')
+            text_times_emb = self.times_stack(text_times)
+            # print(f'text_times_emb: {text_times_emb.shape}')
+
+
+            varis_emb = torch.cat([ts_varis_emb, text_varis_emb], dim=1)
+            values_emb = torch.cat([ts_values_emb, text_values_emb], dim=1)
+            times_emb = torch.cat([ts_times_emb, text_times_emb], dim=1)
+        else:
+            varis_emb, values_emb, times_emb = ts_varis_emb, ts_values_emb, ts_times_emb
+
         
         comb_emb = varis_emb + values_emb + times_emb
         # print(f'comb_emb: {comb_emb.shape}')
         
+        varis = torch.cat([varis, text_varis], dim=-1)
         mask = torch.clamp(varis, 0,1)
         # print(f'Mask: {mask.shape}')
         cont_emb = self.cont_stack(comb_emb, mask)

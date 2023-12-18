@@ -10,7 +10,7 @@ from tqdm import tqdm
 import os
 
 class MultipleInputsDataset(Dataset):
-    def __init__(self, X_demos, X_times, X_values, X_varis, Y, X_text_tokens=None, X_text_attention_mask=None, X_text_times=None, X_text_time_mask=None):
+    def __init__(self, X_demos, X_times, X_values, X_varis, Y, X_text_tokens=None, X_text_attention_mask=None, X_text_times=None, X_text_time_mask=None, X_text_feature_varis=None):
         super(MultipleInputsDataset, self).__init__()
         
         self.X_demos = torch.tensor(X_demos, dtype=torch.float32)
@@ -18,7 +18,7 @@ class MultipleInputsDataset(Dataset):
         self.X_values = torch.tensor(X_values, dtype=torch.float32)
         self.X_varis = torch.tensor(X_varis, dtype=torch.long)
         self.Y = torch.tensor(Y, dtype=torch.float32)
-
+        
         self.has_text = X_text_tokens!=None
 
         if self.has_text:
@@ -27,10 +27,11 @@ class MultipleInputsDataset(Dataset):
             self.X_text_attention_mask = X_text_attention_mask
             self.X_text_times = torch.tensor(X_text_times, dtype=torch.float)
             self.X_text_time_mask = torch.tensor(X_text_time_mask, dtype=torch.long)
+            self.X_text_feature_varis = torch.tensor(X_text_feature_varis, dtype=torch.long)
     
     def __getitem__(self, idx):
         if self.has_text:
-            return self.X_demos[idx], self.X_times[idx], self.X_values[idx], self.X_varis[idx], self.Y[idx], self.X_text_tokens[idx], self.X_text_attention_mask[idx], self.X_text_times[idx], self.X_text_time_mask[idx]
+            return self.X_demos[idx], self.X_times[idx], self.X_values[idx], self.X_varis[idx], self.Y[idx], self.X_text_tokens[idx], self.X_text_attention_mask[idx], self.X_text_times[idx], self.X_text_time_mask[idx], self.X_text_feature_varis[idx]
         else:
             return self.X_demos[idx], self.X_times[idx], self.X_values[idx], self.X_varis[idx], self.Y[idx]
         
@@ -336,7 +337,7 @@ def generate_mortality_dataset(data_path, output_dir):
         json.dump(params, f)
 
 
-def load_mortality_dataset(data_dir, with_text=False, tokenizer=None, text_padding=None, text_max_len=None, text_model=None, period_length=48, num_notes=5):
+def load_mortality_dataset(data_dir, with_text=False, tokenizer=None, text_padding=None, text_max_len=None, text_model=None, period_length=48, num_notes=5, debug=False):
     has_demos = True
 
     if 'train_demos.npy.gz' not in os.listdir(data_dir):
@@ -346,11 +347,11 @@ def load_mortality_dataset(data_dir, with_text=False, tokenizer=None, text_paddi
     for mode in ['train', 'val', 'test']:
         
         with gzip.GzipFile(f'{data_dir}/{mode}_times.npy.gz', 'r') as f:
-            times = np.load(f)
+            ts_times = np.load(f)
         with gzip.GzipFile(f'{data_dir}/{mode}_values.npy.gz', 'r') as f:
-            values = np.load(f)
+            ts_values = np.load(f)
         with gzip.GzipFile(f'{data_dir}/{mode}_varis.npy.gz', 'r') as f:
-            varis = np.load(f)
+            ts_varis = np.load(f)
         with gzip.GzipFile(f'{data_dir}/{mode}_y.npy.gz', 'r') as f:
             y = np.load(f)
 
@@ -358,28 +359,37 @@ def load_mortality_dataset(data_dir, with_text=False, tokenizer=None, text_paddi
             with gzip.GzipFile(f'{data_dir}/{mode}_demos.npy.gz', 'r') as f:
                 demos = np.load(f)
         else: 
-            demos = np.zeros(y.shape)
+            demos = np.zeros((len(y), 1))
 
         if with_text:
             raw_texts = pickle.load(open(f'{data_dir}/{mode}_texts.pkl', 'rb'))
-            raw_text_time_to_end = pickle.load(open(f'{data_dir}/{mode}_text_times.pkl', 'rb'))
+            raw_text_time_from_start = pickle.load(open(f'{data_dir}/{mode}_text_times.pkl', 'rb'))
         else:
-            raw_texts, raw_text_time_to_end = None, None
+            raw_texts, raw_text_time_from_start = None, None
 
+        if debug:
+            ts_times = ts_times[:100]
+            ts_values = ts_times[:100]
+            ts_varis = ts_varis[:100]
+            y = y[:100]
+            raw_texts = raw_texts[:100] if with_text else None
+            raw_text_time_from_start = raw_text_time_from_start[:100] if with_text else None
 
         if with_text:
-            all_text_time_to_end = []
+            all_text_time_from_start = []
             all_text_time_mask = []
             all_text_token = []
             all_text_atten_mask = []
-            for texts, times in tqdm(zip(raw_texts, raw_text_time_to_end)):
-                text_time_to_end = []
+            all_text_feature_varis = []
+            text_feature_varis = np.max(ts_varis) + 1
+            for texts, times in tqdm(zip(raw_texts, raw_text_time_from_start)):
+                text_time_from_start = []
                 text_time_mask = []
                 text_token=[]
                 text_atten_mask=[]
                 for text, time in zip(texts, times):
 
-                    text_time_to_end.append(1-time/period_length)
+                    text_time_from_start.append(time)
                     text_time_mask.append(1)
 
                     inputs = tokenizer.encode_plus(
@@ -403,35 +413,37 @@ def load_mortality_dataset(data_dir, with_text=False, tokenizer=None, text_paddi
                 while len(text_token)<num_notes:
                     text_token.append(torch.tensor([0],dtype=torch.long))
                     text_atten_mask.append(torch.tensor([0],dtype=torch.long))
-                    text_time_to_end.append(0)
+                    text_time_from_start.append(0)
                     text_time_mask.append(0)
                 
                 text_token = text_token[-num_notes:]
                 text_atten_mask = text_atten_mask[-num_notes:]
-                text_time_to_end = text_time_to_end[-num_notes:]
+                text_time_from_start = text_time_from_start[-num_notes:]
                 text_time_mask = text_time_mask[-num_notes:]
 
                 all_text_token.append(text_token)
                 all_text_atten_mask.append(text_atten_mask)
-                all_text_time_to_end.append(text_time_to_end)
+                all_text_time_from_start.append(text_time_from_start)
                 all_text_time_mask.append(text_time_mask)
+                all_text_feature_varis.append([text_feature_varis]*num_notes)
         else:
             all_text_token = None
             all_text_atten_mask = None
-            all_text_time_to_end = None
+            all_text_time_from_start = None
             all_text_time_mask = None
 
 
         dataset = MultipleInputsDataset(
             X_demos=demos, 
-            X_times=times, 
-            X_values=values, 
-            X_varis=varis, 
+            X_times=ts_times, 
+            X_values=ts_values, 
+            X_varis=ts_varis, 
             Y=y,
             X_text_tokens=all_text_token,
             X_text_attention_mask=all_text_atten_mask,
-            X_text_times=all_text_time_to_end,
+            X_text_times=all_text_time_from_start,
             X_text_time_mask=all_text_time_mask,
+            X_text_feature_varis=all_text_feature_varis
         )
 
         datasets_[mode] = dataset
@@ -502,7 +514,7 @@ def generate_mortality_dataset_mimic_iii_benchmark(
         varis_inp = np.zeros((N, max_len), dtype='int32')
 
         text_inp = [[]] * N
-        text_time_to_end_inp = [[]] * N
+        text_time_from_start_inp = [[]] * N
 
 
         y = np.zeros(N, dtype='int32')
@@ -564,14 +576,14 @@ def generate_mortality_dataset_mimic_iii_benchmark(
                         # Checking if within period_length
                         if time_diff <= period_length + 1e-6: #and  diff(start_time, t)>=(-24-1e-6)
                             final_text_list.append(text)
-                            time_to_end = (((np.datetime64(text_start_time) + np.timedelta64(int(period_length)+1, 'h')) - np.datetime64(time)).astype('timedelta64[m]').astype(int))/60.0
-                            final_time_list.append(time_to_end)
+                            time_from_start = (np.datetime64(time) - np.datetime64(text_start_time)).astype('timedelta64[m]').astype(int)/60.0
+                            final_time_list.append(time_from_start)
                         else:
                             break
 
                     if len(final_text_list)>0:
                         text_inp[i] = final_text_list
-                        text_time_to_end_inp[i] = final_time_list
+                        text_time_from_start_inp[i] = final_time_list
 
 
         # Normalising values of features
@@ -602,7 +614,7 @@ def generate_mortality_dataset_mimic_iii_benchmark(
             pickle.dump(text_inp, f)
 
         with open(f'{output_dir}/{mode}_text_times.pkl', 'wb') as f:
-            pickle.dump(text_time_to_end_inp, f)
+            pickle.dump(text_time_from_start_inp, f)
 
 
     params = {'V': len(variables), 'D': len(demo_variables)}
@@ -612,22 +624,23 @@ def generate_mortality_dataset_mimic_iii_benchmark(
 
 
 def pad_text_data(batch):
-
-    X_demos, X_times, X_values, X_varis, Y, X_text_tokens, X_text_attention_mask, X_text_times, X_text_time_mask = zip(*batch)
+    X_demos, X_times, X_values, X_varis, Y, X_text_tokens, X_text_attention_mask, X_text_times, X_text_time_mask, X_text_feature_varis = zip(*batch)
 
     X_text_tokens = [pad_sequence(tokens, batch_first=True, padding_value=0).transpose(0,1) for tokens in X_text_tokens]
     X_text_attention_mask = [pad_sequence(atten, batch_first=True, padding_value=0).transpose(0,1) for atten in X_text_attention_mask]
 
-    X_text_tokens = pad_sequence(X_text_attention_mask, batch_first=True, padding_value=0).transpose(1,2)
+    X_text_tokens = pad_sequence(X_text_tokens, batch_first=True, padding_value=0).transpose(1,2)
     X_text_attention_mask = pad_sequence(X_text_attention_mask, batch_first=True, padding_value=0).transpose(1,2)
-
-    print(X_text_tokens.shape)
-    print(X_text_attention_mask.shape)
 
     X_text_times = pad_sequence([torch.tensor(time, dtype=torch.float) for time in X_text_times],batch_first=True,padding_value=0)
     X_text_time_mask = pad_sequence([torch.tensor(time_mask, dtype=torch.long) for time_mask in X_text_time_mask],batch_first=True,padding_value=0)
+    
+    X_demos = torch.stack(X_demos)
+    X_times = torch.stack(X_times)
+    X_values = torch.stack(X_values)
+    X_varis = torch.stack(X_varis)
+    X_text_feature_varis = torch.stack(X_text_feature_varis)
+    Y = torch.stack(Y)
 
-    print(X_text_tokens.shape)
-    print(X_text_attention_mask.shape)
 
-    return X_demos, X_times, X_values, X_varis, Y, X_text_tokens, X_text_attention_mask, X_text_times, X_text_time_mask
+    return X_demos, X_times, X_values, X_varis, Y, X_text_tokens, X_text_attention_mask, X_text_times, X_text_time_mask, X_text_feature_varis

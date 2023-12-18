@@ -294,10 +294,16 @@ class MULTCrossModel(nn.Module):
                 proj_x_ts_irg=self.time_attn_ts(time_query, time_key_ts, x_ts_irg, x_ts_mask)
                 proj_x_ts_irg=proj_x_ts_irg.transpose(0, 1)
 
+                print(f'time_key_ts: {time_key_ts.shape}')
+                print(f'time_query: {time_query.shape}')
+                print(f'proj_x_ts_irg: {proj_x_ts_irg.shape}')
+
             if self.reg_ts and reg_ts!=None:
                 x_ts_reg = reg_ts.transpose(1, 2)
                 proj_x_ts_reg = x_ts_reg if self.orig_reg_d_ts== self.d_ts else self.proj_ts(x_ts_reg)
                 proj_x_ts_reg = proj_x_ts_reg.permute(2, 0, 1)
+
+                print(f'proj_x_ts_reg: {proj_x_ts_reg.shape}')
 
             if self.TS_mixup:
                 if self.mixup_level=='batch':
@@ -310,6 +316,8 @@ class MULTCrossModel(nn.Module):
                     raise ValueError("Unknown mixedup type")
                 mixup_rate=self.moe(moe_gate)
                 proj_x_ts=mixup_rate*proj_x_ts_irg+(1-mixup_rate)*proj_x_ts_reg
+
+                print(f'proj_x_ts: {proj_x_ts.shape}')
 
             else:
                 if self.irregular_learn_emb_ts:
@@ -328,6 +336,11 @@ class MULTCrossModel(nn.Module):
                 proj_x_txt=self.time_attn(time_query, time_key, x_txt, note_time_mask_list)
                 proj_x_txt=proj_x_txt.transpose(0, 1)
 
+                
+                print(f'proj_x_txt: {proj_x_txt.shape}')
+                print(f'time_key: {time_key.shape}')
+                print(f'time_query: {time_query.shape}')
+
             else:
                 x_txt = x_txt.transpose(1, 2)
                 proj_x_txt = x_txt if self.orig_d_txt == self.d_txt else self.proj_txt(x_txt)
@@ -336,6 +349,12 @@ class MULTCrossModel(nn.Module):
             hiddens = self.trans_self_cross_ts_txt([proj_x_txt, proj_x_ts])
             h_txt_with_ts, h_ts_with_txt=hiddens
             last_hs = torch.cat([h_txt_with_ts[-1], h_ts_with_txt[-1]], dim=1)
+
+
+            # print(f'hiddens: {hiddens.shape}')
+            print(f'h_txt_with_ts: {h_txt_with_ts.shape}')
+            print(f'h_ts_with_txt: {h_ts_with_txt.shape}')
+            print(f'last_hs: {last_hs.shape}')
 
         else:
             if self.cross_method=="MulT":

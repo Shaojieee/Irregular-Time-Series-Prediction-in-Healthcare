@@ -192,23 +192,19 @@ def train_mortality_model(args, accelerator):
                     text_encoder_model = args.text_encoder_model
                 )
                 
-                model = STraTS_text(
+                model = STraTS(
                     D=D, # No. of static variables
                     V=V, # No. of variables / features
                     d=args.d, # Input size of attention layer
                     N=args.N, # No. of Encoder blocks
                     he=args.he, # No. of heads in multi headed encoder blocks
                     dropout=args.dropout,
-                    text_seq_num=args.text_num_notes, # No. of notes
-                    text_atten_embed_dim=args.text_atten_embed_dim,
-                    text_time_embedding_dim=args.text_time_embed_dim,
-                    period_length=args.period_length,
-                    text_encoder_model=bert,
-                    text_encoder_model_name=args.text_encoder_model,
-                    num_cross_layers=args.num_cross_layers, # No. of cross layers with multi modal
-                    num_cross_heads=args.num_cross_heads, # No. of heads in cross transformaer
-                    cross_dropout=args.cross_dropout,
-                    output_dim=1
+                    with_text=True,
+                    text_encoder=bert,
+                    text_encoder_name=args.text_encoder_model,
+                    text_linear_embed_dim=args.d*2,
+                    forecast=False, 
+                    return_embeddings=False
                 )
             else:
                 model = STraTS(
@@ -277,8 +273,8 @@ def train_mortality_model(args, accelerator):
                 for step, batch in tqdm(enumerate(train_dataloader)):
 
                     if args.with_text:
-                        X_demos, X_times, X_values, X_varis, Y, X_text_tokens, X_text_attention_mask, X_text_times, X_text_time_mask = batch
-                        Y_pred = model(_demos, X_times, X_values, X_varis, X_text_tokens, X_text_attention_mask, X_text_times, X_text_time_mask)
+                        X_demos, X_times, X_values, X_varis, Y, X_text_tokens, X_text_attention_mask, X_text_times, X_text_time_mask, X_text_feature_varis = batch
+                        Y_pred = model(X_demos, X_times, X_values, X_varis, X_text_tokens, X_text_attention_mask, X_text_times, X_text_feature_varis)
                     else:
                         X_demos, X_times, X_values, X_varis, Y = batch
                         Y_pred = model(X_demos, X_times, X_values, X_varis)
