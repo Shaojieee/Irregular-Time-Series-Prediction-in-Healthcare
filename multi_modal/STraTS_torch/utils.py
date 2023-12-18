@@ -72,18 +72,6 @@ def parse_args():
         help="Maximum no. of notes to use",
     )
     parser.add_argument(
-        "--text_atten_embed_dim",
-        type=int,
-        default=30,
-        help="Text embedding output dim",
-    )
-    parser.add_argument(
-        "--text_time_embed_dim",
-        type=int,
-        default=64,
-        help="Time embedding output dim",
-    )
-    parser.add_argument(
         "--period_length",
         type=int,
         default=48,
@@ -94,24 +82,6 @@ def parse_args():
         type=str,
         default='bioLongformer',
         help="Text Encoder Model to use",
-    )
-    parser.add_argument(
-        "--num_cross_layers",
-        type=int,
-        default=3,
-        help="No. of cross layers",
-    )
-    parser.add_argument(
-        "--num_cross_heads",
-        type=int,
-        default=8,
-        help="No. of heads in cross attention",
-    )
-    parser.add_argument(
-        "--cross_dropout",
-        type=float,
-        default=0.10,
-        help="Dropout in the cross layer and output linear stack",
     )
     parser.add_argument(
         "--ts_learning_rate",

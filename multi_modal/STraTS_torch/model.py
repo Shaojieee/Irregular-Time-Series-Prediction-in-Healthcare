@@ -364,8 +364,8 @@ class STraTS(nn.Module):
         
         comb_emb = varis_emb + values_emb + times_emb
         # print(f'comb_emb: {comb_emb.shape}')
-        
-        varis = torch.cat([varis, text_varis], dim=-1)
+        if self.with_text:
+            varis = torch.cat([varis, text_varis], dim=-1)
         mask = torch.clamp(varis, 0,1)
         # print(f'Mask: {mask.shape}')
         cont_emb = self.cont_stack(comb_emb, mask)

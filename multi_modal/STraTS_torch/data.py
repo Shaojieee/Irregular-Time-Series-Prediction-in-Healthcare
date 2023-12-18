@@ -431,6 +431,7 @@ def load_mortality_dataset(data_dir, with_text=False, tokenizer=None, text_paddi
             all_text_atten_mask = None
             all_text_time_from_start = None
             all_text_time_mask = None
+            all_text_feature_varis = None
 
 
         dataset = MultipleInputsDataset(

@@ -154,7 +154,8 @@ def train_mortality_model(args, accelerator):
         text_max_len=args.text_max_length, 
         text_model=args.text_encoder_model, 
         period_length=args.period_length, 
-        num_notes=args.text_num_notes
+        num_notes=args.text_num_notes,
+        debug=False
     )
 
     test_dataloader = DataLoader(test_dataset, batch_size=args.eval_batch_size, collate_fn=dataloader_collate_fn)
@@ -191,10 +192,12 @@ def train_mortality_model(args, accelerator):
                 bert, bert_config, tokenizer = load_Bert(
                     text_encoder_model = args.text_encoder_model
                 )
+
+                bert = accelerator.prepare(bert)
                 
                 model = STraTS(
                     D=D, # No. of static variables
-                    V=V, # No. of variables / features
+                    V=V+1, # No. of variables / features
                     d=args.d, # Input size of attention layer
                     N=args.N, # No. of Encoder blocks
                     he=args.he, # No. of heads in multi headed encoder blocks
@@ -235,7 +238,7 @@ def train_mortality_model(args, accelerator):
                 model_dict.update(forecast_model_weights)
                 model.load_state_dict(model_dict)
 
-            optimiser = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
+            optimiser = torch.optim.Adam(model.parameters(), lr=args.ts_learning_rate)
             if args.with_text:
                 optimizer= torch.optim.Adam([
                     {'params': [p for n, p in model.named_parameters() if 'text' not in n]},
@@ -274,7 +277,9 @@ def train_mortality_model(args, accelerator):
 
                     if args.with_text:
                         X_demos, X_times, X_values, X_varis, Y, X_text_tokens, X_text_attention_mask, X_text_times, X_text_time_mask, X_text_feature_varis = batch
+                        print(Y)
                         Y_pred = model(X_demos, X_times, X_values, X_varis, X_text_tokens, X_text_attention_mask, X_text_times, X_text_feature_varis)
+                        print(Y_pred)
                     else:
                         X_demos, X_times, X_values, X_varis, Y = batch
                         Y_pred = model(X_demos, X_times, X_values, X_varis)
