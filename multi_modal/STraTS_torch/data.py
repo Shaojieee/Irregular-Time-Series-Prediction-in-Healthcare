@@ -645,3 +645,27 @@ def pad_text_data(batch):
 
 
     return X_demos, X_times, X_values, X_varis, Y, X_text_tokens, X_text_attention_mask, X_text_times, X_text_time_mask, X_text_feature_varis
+
+
+def combine_values_varis_with_text(batch):
+
+    X_demos, X_times, X_values, X_varis, Y, X_text_tokens, X_text_attention_mask, X_text_times, X_text_time_mask, X_text_feature_varis = batch
+
+    X_values = torch.cat([torch.unsqueeze(X_values,dim=-1), torch.unsqueeze(X_varis, dim=-1)], dim=-1)
+    
+    return X_demos, X_times, X_values, X_varis, Y, X_text_tokens, X_text_attention_mask, X_text_times, X_text_time_mask, X_text_feature_varis
+
+
+def combine_values_varis(batch):
+    
+    X_demos, X_times, X_values, X_varis, Y = zip(*batch)
+
+    X_demos = torch.stack(X_demos)
+    X_times = torch.stack(X_times)
+    X_values = torch.stack(X_values)
+    X_varis = torch.stack(X_varis)
+    Y = torch.stack(Y)
+
+    X_values = torch.cat([torch.unsqueeze(X_values,dim=-1), torch.unsqueeze(X_varis, dim=-1)], dim=-1)
+    
+    return X_demos, X_times, X_values, X_varis, Y

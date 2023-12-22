@@ -141,9 +141,17 @@ def train_mortality_model(args, accelerator):
         _, _, tokenizer = load_Bert(
             text_encoder_model = args.text_encoder_model
         )
-        dataloader_collate_fn = pad_text_data
     else:
         tokenizer = None
+        dataloader_collate_fn = None
+    
+    if args.with_text and args.new_value_encoding:
+        dataloader_collate_fn = lambda x: combine_values_varis_with_text(pad_text_data(x))
+    elif args.with_text:
+        dataloader_collate_fn = pad_text_data
+    elif args.new_value_encodingL
+        dataloader_collate_fn = combine_values_varis
+    else:
         dataloader_collate_fn = None
 
     train_dataset, val_dataset, test_dataset, V, D = load_mortality_dataset(
@@ -291,6 +299,7 @@ def train_mortality_model(args, accelerator):
                     else:
                         X_demos, X_times, X_values, X_varis, Y = batch
                         Y_pred = model(X_demos, X_times, X_values, X_varis)
+                    
 
                     loss = loss_fn(Y, Y_pred)
 

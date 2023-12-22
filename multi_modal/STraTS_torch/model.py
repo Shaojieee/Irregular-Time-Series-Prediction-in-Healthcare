@@ -225,7 +225,8 @@ class STraTS(nn.Module):
             text_encoder_name=None,
             text_linear_embed_dim=None,
             forecast=False, 
-            return_embeddings=False
+            return_embeddings=False,
+            new_value_encoding=False
         ):
         super(STraTS, self).__init__()
         total_parameters = 0
@@ -253,10 +254,17 @@ class STraTS(nn.Module):
             # total_parameters += num_params
 
         # FFN to 'encode' the continuous values. Continuous Value Embedding (CVE)
-        self.values_stack = CVE(
-            hid_dim=cve_units, 
-            output_dim=d
-        )        
+        if new_value_encoding:
+            self.values_stack = TVE(
+                input_dim=2,
+                hid_dim=cve_units, 
+                output_dim=d
+            )
+        else:
+            self.values_stack = CVE(
+                hid_dim=cve_units, 
+                output_dim=d
+            )  
         # num_params = sum(p.numel() for p in self.values_stack.parameters())
         # print(f'values_stack: {num_params}')
         # total_parameters += num_params

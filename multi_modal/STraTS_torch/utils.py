@@ -32,6 +32,7 @@ def parse_args():
         "--model_weights", type=str, default=None, help="forecasting_model or mortality_model"
     )
     parser.add_argument('--with_text', action='store_true')
+    parser.add_argument('--new_value_encoding', action='store_true')
     parser.add_argument(
         "--text_padding",
         action='store_true'
