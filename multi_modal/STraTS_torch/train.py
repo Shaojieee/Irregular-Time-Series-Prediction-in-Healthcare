@@ -222,28 +222,35 @@ def train_mortality_model(args, accelerator):
                     forecast=False
                 )
             
-            if print_model:
-                print(model)
-                total_params = sum(p.numel() for p in model.parameters())
-                print(f'Total number of parameters: {total_params}')
-                print_model = False
 
-            if args.forecast_model_weights!=None:
-                forecast_model_weights = torch.load(args.forecast_model_weights, map_location=torch.device('cpu'))
-                for k in list(forecast_model_weights.keys()):
-                    if k.startswith('output_stack'):
-                        del forecast_model_weights[k]
+            if args.model_weights!=None:
+                model_weights = torch.load(args.model_weights, map_location=torch.device('cpu'))
+                try:
+                    model.load_state_dict(model_weights, strict=True)
+                except Exception as e:
+                    print('Model do no match saved weights')
+                    print(e)
 
-                model_dict = model.state_dict()
-                model_dict.update(forecast_model_weights)
-                model.load_state_dict(model_dict)
+                    model.load_state_dict(model_weights, strict=False)
+            
+            
 
             optimiser = torch.optim.Adam(model.parameters(), lr=args.ts_learning_rate)
             if args.with_text:
-                optimizer= torch.optim.Adam([
-                    {'params': [p for n, p in model.named_parameters() if 'text' not in n]},
-                    {'params':[p for n, p in model.named_parameters() if 'text' in n], 'lr': args.text_learning_rate}
-                ], lr=args.ts_learning_rate)
+                # optimizer= torch.optim.Adam([
+                #     {'params': [p for n, p in model.named_parameters() if 'text' not in n]},
+                #     {'params':[p for n, p in model.named_parameters() if 'text' in n], 'lr': args.text_learning_rate}
+                # ], lr=args.ts_learning_rate)
+
+                for param in model.text_encoder.parameters():
+                        param.requires_grad = False
+            
+            if print_model:
+                print(model)
+                total_params = sum(p.numel() for p in model.parameters())
+                total_trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad==True)
+                print(f'Total number of parameters: {total_params}, Total trainable parameters: {total_trainable_params}')
+                print_model = False
 
             loss_fn = mortality_loss
 
@@ -270,6 +277,9 @@ def train_mortality_model(args, accelerator):
 
             # TODO: Include training results log file as well
             for epoch in tqdm(range(args.num_epochs)):
+                
+                if time_check(args.start_time, mins_left=40):
+                    break
 
                 model.train()
                 total_loss = 0.0
@@ -277,9 +287,7 @@ def train_mortality_model(args, accelerator):
 
                     if args.with_text:
                         X_demos, X_times, X_values, X_varis, Y, X_text_tokens, X_text_attention_mask, X_text_times, X_text_time_mask, X_text_feature_varis = batch
-                        print(Y)
                         Y_pred = model(X_demos, X_times, X_values, X_varis, X_text_tokens, X_text_attention_mask, X_text_times, X_text_feature_varis)
-                        print(Y_pred)
                     else:
                         X_demos, X_times, X_values, X_varis, Y = batch
                         Y_pred = model(X_demos, X_times, X_values, X_varis)
@@ -297,7 +305,8 @@ def train_mortality_model(args, accelerator):
                 # Evaluation after 1 epoch
                 results = val_results.on_epoch_end(
                     model=model,
-                    epoch=epoch
+                    epoch=epoch,
+                    with_text=args.with_text
                 )
 
                 # Early Stopper check
@@ -314,7 +323,8 @@ def train_mortality_model(args, accelerator):
             # Getting Test Results
             test_results.on_epoch_end(
                 model=model,
-                epoch=epoch
+                epoch=epoch,
+                with_text=args.with_text
             )
 
             # Saving Weights

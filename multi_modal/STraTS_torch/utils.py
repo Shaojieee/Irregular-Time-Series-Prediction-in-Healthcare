@@ -27,8 +27,9 @@ def parse_args():
     parser.add_argument(
         "--output_dir", type=str, default=None, help="forecasting_model or mortality_model"
     )
+    
     parser.add_argument(
-        "--forecast_model_weights", type=str, default=None, help="forecasting_model or mortality_model"
+        "--model_weights", type=str, default=None, help="forecasting_model or mortality_model"
     )
     parser.add_argument('--with_text', action='store_true')
     parser.add_argument(
@@ -177,14 +178,18 @@ class EvaluationCallback():
         self.evaluation_fn = evaluation_fn
         self.logs = []
 
-    def on_epoch_end(self, model, epoch, **kwargs):
+    def on_epoch_end(self, model, epoch, with_text, **kwargs):
         model.eval()
         Y_ = []
         Y_pred_ = []
         with torch.no_grad():
             for step, batch in tqdm(enumerate(self.val_dataloader)):
-                X_demos, X_times, X_values, X_varis, Y = batch
-                Y_pred = model(X_demos, X_times, X_values, X_varis)
+                if with_text:
+                    X_demos, X_times, X_values, X_varis, Y, X_text_tokens, X_text_attention_mask, X_text_times, X_text_time_mask, X_text_feature_varis = batch
+                    Y_pred = model(X_demos, X_times, X_values, X_varis, X_text_tokens, X_text_attention_mask, X_text_times, X_text_feature_varis)
+                else:
+                    X_demos, X_times, X_values, X_varis, Y = batch
+                    Y_pred = model(X_demos, X_times, X_values, X_varis)
 
                 Y_.append(Y); Y_pred_.append(Y_pred)
         Y_ = torch.cat(Y_)
