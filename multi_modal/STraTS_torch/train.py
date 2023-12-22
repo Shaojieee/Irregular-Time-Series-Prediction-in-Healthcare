@@ -3,6 +3,7 @@ from data import *
 from model import STraTS
 from strats_text_model import STraTS_text, load_Bert
 
+from collections import Counter
 import warnings
 import time
 import logging
@@ -146,11 +147,11 @@ def train_mortality_model(args, accelerator):
         dataloader_collate_fn = None
     
     if args.with_text and args.new_value_encoding:
-        dataloader_collate_fn = lambda x: combine_values_varis_with_text(pad_text_data(x))
+        dataloader_collate_fn = lambda x: combine_values_varis_with_text(pad_text_data(x), normalise_varis=args.normalise_varis)
     elif args.with_text:
         dataloader_collate_fn = pad_text_data
-    elif args.new_value_encodingL
-        dataloader_collate_fn = combine_values_varis
+    elif args.new_value_encoding:
+        dataloader_collate_fn = lambda x: combine_values_varis(x, normalise_varis=args.normalise_varis)
     else:
         dataloader_collate_fn = None
 
@@ -215,7 +216,8 @@ def train_mortality_model(args, accelerator):
                     text_encoder_name=args.text_encoder_model,
                     text_linear_embed_dim=args.d*2,
                     forecast=False, 
-                    return_embeddings=False
+                    return_embeddings=False,
+                    new_value_encoding=args.new_value_encoding
                 )
             else:
                 model = STraTS(
@@ -227,7 +229,8 @@ def train_mortality_model(args, accelerator):
                     N=args.N,
                     he=args.he,
                     dropout=args.dropout,
-                    forecast=False
+                    forecast=False,
+                    new_value_encoding=args.new_value_encoding
                 )
             
 
@@ -260,7 +263,24 @@ def train_mortality_model(args, accelerator):
                 print(f'Total number of parameters: {total_params}, Total trainable parameters: {total_trainable_params}')
                 print_model = False
 
-            loss_fn = mortality_loss
+
+
+            if args.weighted_class_weights:
+                if args.with_text:
+                    train_classes = [Y for X_demos, X_times, X_values, X_varis, Y, X_text_tokens, X_text_attention_mask, X_text_times, X_text_time_mask, X_text_feature_varis in train_dataset]
+                else:
+                    train_classes = [int(Y.item()) for X_demos, X_times, X_values, X_varis, Y in train_dataset]
+
+                class_weights = Counter(train_classes)
+
+                class_weights = {0:len(train_classes) / (2*class_weights[0]), 1: len(train_classes) / (2*class_weights[1])}
+
+                loss_fn = (lambda y, y_pred: mortality_loss(y, y_pred, class_weights=class_weights))
+            else:
+                class_weights = {1:0, 0:1}
+                loss_fn = mortality_loss
+            
+            print(f'Class Weights: {class_weights}')
 
             model, optimiser, train_dataloader, val_dataloader, test_dataloader = \
             accelerator.prepare(model, optimiser, train_dataloader, val_dataloader, test_dataloader)
@@ -315,7 +335,8 @@ def train_mortality_model(args, accelerator):
                 results = val_results.on_epoch_end(
                     model=model,
                     epoch=epoch,
-                    with_text=args.with_text
+                    with_text=args.with_text,
+                    class_weights=class_weights
                 )
 
                 # Early Stopper check
@@ -333,7 +354,8 @@ def train_mortality_model(args, accelerator):
             test_results.on_epoch_end(
                 model=model,
                 epoch=epoch,
-                with_text=args.with_text
+                with_text=args.with_text,
+                class_weights=class_weights
             )
 
             # Saving Weights

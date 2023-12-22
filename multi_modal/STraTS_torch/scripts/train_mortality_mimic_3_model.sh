@@ -36,13 +36,39 @@ cd /home/FYP/szhong005/fyp/multi_modal/STraTS_torch
 #                     --num_epochs 100 \
 
 
-# Numerical with new value encoding
+# # Numerical with new value encoding
+# python -W ignore train.py  \
+#                     --fp16 \
+#                     --train_job "mortality_model" \
+#                     --output_dir "./logs/strats_new_encoding" \
+#                     --data_dir "./mortality_mimic_3_benchmark" \
+#                     --new_value_encoding \
+#                     --d 64 \
+#                     --N 4 \
+#                     --he 4 \
+#                     --dropout 0.2 \
+#                     --ts_learning_rate 0.0004 \
+#                     --patience 10 \
+#                     --early_stopper_min_delta 0 \
+#                     --early_stopper_mode "min" \
+#                     --early_stopper_restore_best_weights \
+#                     --train_batch_size 4 \
+#                     --eval_batch_size 4 \
+#                     --lds 100 \
+#                     --repeats 1 \
+#                     --num_epochs 100 \
+
+
+
+# Numerical with new value encoding & normalise varis
 python -W ignore train.py  \
                     --fp16 \
                     --train_job "mortality_model" \
-                    --output_dir "./logs/strats_new_encoding" \
+                    --output_dir "./logs/strats_new_encoding_normalise_varis_weighted" \
                     --data_dir "./mortality_mimic_3_benchmark" \
-                    -new_value_encoding \
+                    --new_value_encoding \
+                    --normalise_varis \
+                    --weighted_class_weights \
                     --d 64 \
                     --N 4 \
                     --he 4 \
@@ -55,9 +81,11 @@ python -W ignore train.py  \
                     --train_batch_size 4 \
                     --eval_batch_size 4 \
                     --lds 100 \
-                    --repeats 5 \
+                    --repeats 1 \
                     --num_epochs 100 \
-                
+
+
+
 
 # STraTS with text
 # python -W ignore train.py  \

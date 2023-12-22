@@ -33,6 +33,7 @@ def parse_args():
     )
     parser.add_argument('--with_text', action='store_true')
     parser.add_argument('--new_value_encoding', action='store_true')
+    parser.add_argument('--normalise_varis', action='store_true')
     parser.add_argument(
         "--text_padding",
         action='store_true'
@@ -97,6 +98,7 @@ def parse_args():
         default=0.00002,
         help="Text Model Learning Rate",
     )
+    parser.add_argument('--weighted_class_weights', action='store_true')
     parser.add_argument(
         "--patience",
         type=int,
@@ -158,15 +160,20 @@ def forecast_results(y_true, y_pred, **kwargs):
     return {'LOSS': torch.sum(y_true[:,V:]*(y_true[:,:V]- y_pred)**2, dim=-1).mean().item()}
 
 
-def mortality_loss(y_true, y_pred):
-    return torch.nn.functional.binary_cross_entropy(y_pred, y_true)
+def mortality_loss(y_true, y_pred, class_weights={1:1,0:1}):
+    weights = torch.full_like(y_true, fill_value=class_weights[0])
+    weights[y_true==1] = class_weights[1]
+    return torch.nn.functional.binary_cross_entropy(y_pred, y_true, weight=weights)
 
-def mortality_results(y_true, y_pred, **kwargs):
+def mortality_results(y_true, y_pred, class_weights={1:1, 0:1},**kwargs):
     precision, recall, thresholds = precision_recall_curve(y_true, y_pred)
     pr_auc = auc(recall, precision)
     min_rp = np.minimum(precision, recall).max()
     roc_auc = roc_auc_score(y_true, y_pred)
-    bce_loss = torch.nn.functional.binary_cross_entropy(y_pred, y_true).item()
+
+    weights = torch.full_like(y_true, fill_value=class_weights[0])
+    weights[y_true==1] = class_weights[1]
+    bce_loss = torch.nn.functional.binary_cross_entropy(y_pred, y_true, weight=weights).item()
 
     f1 = f1_score(y_true, (y_pred>0.5))
 
