@@ -217,7 +217,8 @@ def train_mortality_model(args, accelerator):
                     text_linear_embed_dim=args.d*2,
                     forecast=False, 
                     return_embeddings=False,
-                    new_value_encoding=args.new_value_encoding
+                    new_value_encoding=args.new_value_encoding,
+                    time_2_vec=args.time_2_vec
                 )
             else:
                 model = STraTS(
@@ -230,7 +231,8 @@ def train_mortality_model(args, accelerator):
                     he=args.he,
                     dropout=args.dropout,
                     forecast=False,
-                    new_value_encoding=args.new_value_encoding
+                    new_value_encoding=args.new_value_encoding,
+                    time_2_vec=args.time_2_vec
                 )
             
 
@@ -277,7 +279,7 @@ def train_mortality_model(args, accelerator):
 
                 loss_fn = (lambda y, y_pred: mortality_loss(y, y_pred, class_weights=class_weights))
             else:
-                class_weights = {1:0, 0:1}
+                class_weights = {1:1, 0:1}
                 loss_fn = mortality_loss
             
             print(f'Class Weights: {class_weights}')

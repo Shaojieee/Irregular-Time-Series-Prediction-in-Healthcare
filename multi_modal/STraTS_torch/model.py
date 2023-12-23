@@ -49,6 +49,20 @@ class TVE(nn.Module):
         return self.stack(X)
 
 
+class Time2Vec(nn.Module):
+    def __init__(self, output_dim):
+        super(Time2Vec, self).__init__()
+
+        self.periodic = nn.Linear(1, output_dim-1)
+        self.linear = nn.Linear(1, 1)
+
+    def forward(self, time):
+        time = time.unsqueeze(-1)
+        periodic_out = torch.sin(self.periodic(time))
+        linear_out = self.linear(time)
+        return torch.cat([linear_out, periodic_out],-1)
+
+
 class Attention(nn.Module):
     def __init__(self, d, hid_dim):
         super(Attention, self).__init__()
@@ -226,7 +240,8 @@ class STraTS(nn.Module):
             text_linear_embed_dim=None,
             forecast=False, 
             return_embeddings=False,
-            new_value_encoding=False
+            new_value_encoding=False,
+            time_2_vec=False
         ):
         super(STraTS, self).__init__()
         total_parameters = 0
@@ -270,10 +285,15 @@ class STraTS(nn.Module):
         # total_parameters += num_params
         
         # FFN to 'encode' the continuous values. Continuous Value Embedding (CVE)
-        self.times_stack = CVE(
-            hid_dim=cve_units, 
-            output_dim=d
-        )        
+        if time_2_vec:
+            self.times_stack = Time2Vec(
+                output_dim=d
+            )
+        else:
+            self.times_stack = CVE(
+                hid_dim=cve_units, 
+                output_dim=d
+            )        
         # num_params = sum(p.numel() for p in self.times_stack.parameters())
         # print(f'times_stack: {num_params}')
         # total_parameters += num_params

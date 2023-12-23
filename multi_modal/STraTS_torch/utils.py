@@ -34,6 +34,7 @@ def parse_args():
     parser.add_argument('--with_text', action='store_true')
     parser.add_argument('--new_value_encoding', action='store_true')
     parser.add_argument('--normalise_varis', action='store_true')
+    parser.add_argument('--time_2_vec', action='store_true')
     parser.add_argument(
         "--text_padding",
         action='store_true'
