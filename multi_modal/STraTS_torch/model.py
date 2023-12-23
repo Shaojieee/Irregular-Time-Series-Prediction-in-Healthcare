@@ -241,7 +241,8 @@ class STraTS(nn.Module):
             forecast=False, 
             return_embeddings=False,
             new_value_encoding=False,
-            time_2_vec=False
+            time_2_vec=False,
+            combine_feature_value_encoding=False
         ):
         super(STraTS, self).__init__()
         total_parameters = 0
@@ -250,10 +251,14 @@ class STraTS(nn.Module):
         self.with_text = with_text
         self.D = D
         self.return_embeddings = return_embeddings
+        self.combine_feature_value_encoding = combine_feature_value_encoding
 
         # Inputs: max_len * batch_size
         # To embed which feature is this value representing
-        self.varis_stack = nn.Embedding(V+1, d)
+        if combine_feature_value_encoding:
+            self.varis_stack = nn.Embedding(V+1, cve_units)
+        else:
+            self.varis_stack = nn.Embedding(V+1, d)
         # num_params = sum(p.numel() for p in self.varis_stack.parameters())
         # print(f'varis_stack: {num_params}')
         # total_parameters += num_params
@@ -273,6 +278,12 @@ class STraTS(nn.Module):
             self.values_stack = TVE(
                 input_dim=2,
                 hid_dim=cve_units, 
+                output_dim=d
+            )
+        elif combine_feature_value_encoding:
+            self.values_stack = TVE(
+                input_dim=(cve_units+1),
+                hid_dim=d//2, 
                 output_dim=d
             )
         else:
@@ -364,8 +375,15 @@ class STraTS(nn.Module):
         if self.D>0:
             demo_enc = self.demo_stack(demo)
 
-        ts_varis_emb = self.varis_stack(varis)
-        ts_values_emb = self.values_stack(values)
+        if self.combine_feature_value_encoding:
+            ts_varis_emb = self.varis_stack(varis)
+            values = torch.cat([ts_varis_emb, values.unsqueeze(-1)], dim=-1)
+            ts_values_emb = self.values_stack(values)
+        else:
+            ts_varis_emb = self.varis_stack(varis)
+            ts_values_emb = self.values_stack(values)
+
+
         ts_times_emb = self.times_stack(times)
         # print(f'ts_varis_emb: {ts_varis_emb.shape}')
         # print(f'ts_values_emb: {ts_values_emb.shape}')
@@ -389,8 +407,11 @@ class STraTS(nn.Module):
         else:
             varis_emb, values_emb, times_emb = ts_varis_emb, ts_values_emb, ts_times_emb
 
-        
-        comb_emb = varis_emb + values_emb + times_emb
+        if self.combine_feature_value_encoding:
+            comb_emb = values_emb + times_emb
+        else:
+            comb_emb = varis_emb + values_emb + times_emb
+
         # print(f'comb_emb: {comb_emb.shape}')
         if self.with_text:
             varis = torch.cat([varis, text_varis], dim=-1)
