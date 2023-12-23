@@ -148,6 +148,16 @@ def parse_args():
     )
     parser.add_argument("--num_epochs", type=int, default=10, help="Total number of training epochs to perform.")
 
+    parser.add_argument(
+        "--optuna_sampler", type=str, default=None, help="Path to weights of optuna sampler"
+    )
+    parser.add_argument(
+        "--study_name", type=str, default='tune', help="Name of optuna study"
+    )
+
+
+
+
     args = parser.parse_args()
 
     return args

@@ -2,6 +2,7 @@ from utils import *
 from data import *
 from model import STraTS
 from strats_text_model import STraTS_text, load_Bert
+from optuna_utils import objective
 
 from collections import Counter
 import warnings
@@ -15,6 +16,7 @@ import torch
 import torch.nn
 from torch.utils.data import DataLoader, Subset
 from accelerate import Accelerator
+import optuna
 
 
 
@@ -39,6 +41,8 @@ def main():
         train_forecasting_model(args, accelerator)
     elif args.train_job=='mortality_model':
         train_mortality_model(args, accelerator)
+    elif args.train_job=='mortality_model_tuning':
+        tune_mortality_model(args, accelerator)
 
 
 
@@ -388,6 +392,69 @@ def train_mortality_model(args, accelerator):
         output_dir=args.output_dir,
         file_name=f'{args.train_job}_details.json'
     )
+
+
+def tune_mortality_model(args, accelerator):
+    
+    if args.with_text:
+        _, _, tokenizer = load_Bert(
+            text_encoder_model = args.text_encoder_model
+        )
+    else:
+        tokenizer = None
+        dataloader_collate_fn = None
+    
+
+    train_dataset, val_dataset, test_dataset, V, D = load_mortality_dataset(
+        args.data_dir, 
+        with_text=args.with_text, 
+        tokenizer=tokenizer,
+        text_padding=args.text_padding, 
+        text_max_len=args.text_max_length, 
+        text_model=args.text_encoder_model, 
+        period_length=args.period_length, 
+        num_notes=args.text_num_notes,
+        debug=False
+    )
+
+    print(f'Training Dataset: {len(train_dataset)}')
+    print(f'Validation Dataset: {len(val_dataset)}')
+    print(f'Test Dataset: {len(test_dataset)}')
+
+    args.D = D
+    args.V = V
+
+    if args.optuna_sampler:
+        sampler = pickle.load(open(args.optuna_sampler, "rb"))
+    else:
+        sampler = optuna.samplers.TPESampler(seed=42)
+
+    study = optuna.create_study(
+        study_name=args.study_name,
+        storage=f"sqlite:///{args.study_name}.db",
+        load_if_exists=True,
+        direction="minimize", 
+        sampler=sampler, 
+        pruner=optuna.pruners.HyperbandPruner(),
+
+    )
+
+    study.optimize(
+        lambda x: objective(x, train_dataset, val_dataset, accelerator, args), 
+        n_trials=30,
+        timeout=5*60*60
+    )
+
+
+    with open(args.optuna_sampler, 'wb') as f:
+        pickle.dump(study.sampler, f)
+
+    best_trial = study.best_trial
+
+    print(f'Best Parameters')
+
+    for k, v in best_trial.params.items():
+        print(f'{k}: {v}')
 
 
 if __name__ == "__main__":
