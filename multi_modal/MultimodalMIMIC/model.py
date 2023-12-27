@@ -584,7 +584,7 @@ class TSMixed(nn.Module):
             else:
                 raise ValueError("Unknown model type")
                        
-    #
+    
             last_hs_proj = self.proj2(F.dropout(F.relu(self.proj1(last_h_ts)), p=self.dropout, training=self.training))
             last_hs_proj += last_hs
             output = self.out_layer(last_hs_proj)

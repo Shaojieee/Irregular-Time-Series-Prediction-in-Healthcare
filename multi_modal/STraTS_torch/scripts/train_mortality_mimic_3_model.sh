@@ -15,36 +15,12 @@ source activate fyp_multi_modal
 cd /home/FYP/szhong005/fyp/multi_modal/STraTS_torch
 
 # STraTS tuning
-python -W ignore train.py  \
-                    --fp16 \
-                    --train_job "mortality_model_tuning" \
-                    --study_name "strats_tuned_new_encoding_normalise_varis_orig_dataset" \
-                    --output_dir "./logs/strats_tuned_new_encoding_normalise_varis_orig_dataset" \
-                    --data_dir "./mortality_datasets" \
-                    --new_value_encoding \
-                    --normalise_varis \
-                    --d 64 \
-                    --N 4 \
-                    --he 4 \
-                    --dropout 0.2 \
-                    --ts_learning_rate 0.0004 \
-                    --patience 10 \
-                    --early_stopper_min_delta 0 \
-                    --early_stopper_mode "min" \
-                    --early_stopper_restore_best_weights \
-                    --train_batch_size 4 \
-                    --eval_batch_size 4 \
-                    --lds 100 \
-                    --repeats 1 \
-                    --num_epochs 20 \
-
-# Original STraTS
 # python -W ignore train.py  \
-#                     --fp16 \
-#                     --train_job "mortality_model" \
-#                     --output_dir "./logs/strats_time2vec" \
-#                     --data_dir "./mortality_mimic_3_benchmark" \
-#                     --time_2_vec \
+#                     --train_job "mortality_model_tuning" \
+#                     --study_name "strats_tuned_orig_dataset" \
+#                     --output_dir "./logs/strats_tuning_orig_dataset" \
+#                     --optuna_sampler "./strats_tuned_orig_dataset_sampler.pkl" \
+#                     --data_dir "./mortality_datasets" \
 #                     --d 64 \
 #                     --N 4 \
 #                     --he 4 \
@@ -54,10 +30,30 @@ python -W ignore train.py  \
 #                     --early_stopper_min_delta 0 \
 #                     --early_stopper_mode "min" \
 #                     --early_stopper_restore_best_weights \
-#                     --train_batch_size 4 \
-#                     --eval_batch_size 4 \
 #                     --lds 100 \
 #                     --repeats 1 \
+#                     --num_epochs 50 \
+
+# Original STraTS
+# python -W ignore train.py  \
+#                     --fp16 \
+#                     --train_job "mortality_model" \
+#                     --output_dir "./logs/strats_weighted_orig_dataset" \
+#                     --data_dir "./mortality_datasets" \
+#                     --weighted_class_weights \
+#                     --d 64 \
+#                     --N 4 \
+#                     --he 4 \
+#                     --dropout 0.2 \
+#                     --ts_learning_rate 0.0002 \
+#                     --patience 10 \
+#                     --early_stopper_min_delta 0 \
+#                     --early_stopper_mode "min" \
+#                     --early_stopper_restore_best_weights \
+#                     --train_batch_size 128 \
+#                     --eval_batch_size 128 \
+#                     --lds 100 \
+#                     --repeats 5 \
 #                     --num_epochs 100 \
 
 
@@ -65,21 +61,20 @@ python -W ignore train.py  \
 # python -W ignore train.py  \
 #                     --fp16 \
 #                     --train_job "mortality_model" \
-#                     --output_dir "./logs/strats_new_encoding_time2vec" \
-#                     --data_dir "./mortality_mimic_3_benchmark" \
+#                     --output_dir "./logs/strats_tuned_new_encoding_orig_dataset" \
+#                     --data_dir "./mortality_datasets" \
 #                     --new_value_encoding \
-#                     --time_2_vec \
 #                     --d 64 \
 #                     --N 4 \
 #                     --he 4 \
 #                     --dropout 0.2 \
-#                     --ts_learning_rate 0.0004 \
+#                     --ts_learning_rate 0.0002 \
 #                     --patience 10 \
 #                     --early_stopper_min_delta 0 \
 #                     --early_stopper_mode "min" \
 #                     --early_stopper_restore_best_weights \
-#                     --train_batch_size 4 \
-#                     --eval_batch_size 4 \
+#                     --train_batch_size 128 \
+#                     --eval_batch_size 128 \
 #                     --lds 100 \
 #                     --repeats 1 \
 #                     --num_epochs 100 \
@@ -87,25 +82,48 @@ python -W ignore train.py  \
 
 
 # Numerical with new value encoding & normalise varis
+python -W ignore train.py  \
+                    --fp16 \
+                    --train_job "mortality_model" \
+                    --output_dir "./logs/strats_new_encoding_normalise_varis_orig_dataset" \
+                    --data_dir "./mortality_datasets" \
+                    --new_value_encoding \
+                    --normalise_varis \
+                    --d 64 \
+                    --N 4 \
+                    --he 4 \
+                    --dropout 0.2 \
+                    --ts_learning_rate 0.0002 \
+                    --patience 10 \
+                    --early_stopper_min_delta 0 \
+                    --early_stopper_mode "min" \
+                    --early_stopper_restore_best_weights \
+                    --train_batch_size 128 \
+                    --eval_batch_size 128 \
+                    --lds 100 \
+                    --repeats 5 \
+                    --num_epochs 100 \
+
+
+# Numerical with combine feature & value encoding
 # python -W ignore train.py  \
 #                     --fp16 \
 #                     --train_job "mortality_model" \
-#                     --output_dir "./logs/strats_new_encoding_normalise_varis_time2vec" \
-#                     --data_dir "./mortality_mimic_3_benchmark" \
-#                     --new_value_encoding \
-#                     --normalise_varis \
-#                     --time_2_vec \
+#                     --output_dir "./logs/strats_combined_orig_dataset" \
+#                     --data_dir "./mortality_datasets" \
+#                     --combine_varis_time \
+#                     -weighted_class_weights \
 #                     --d 64 \
 #                     --N 4 \
 #                     --he 4 \
 #                     --dropout 0.2 \
-#                     --ts_learning_rate 0.0004 \
-#                     --patience 10 \
+#                     --ts_learning_rate 0.0002 \
+#                     --patience 20 \
 #                     --early_stopper_min_delta 0 \
 #                     --early_stopper_mode "min" \
 #                     --early_stopper_restore_best_weights \
-#                     --train_batch_size 4 \
-#                     --eval_batch_size 4 \
+#                     --train_batch_size 128 \
+#                     --eval_batch_size 128 \
 #                     --lds 100 \
 #                     --repeats 1 \
 #                     --num_epochs 100 \

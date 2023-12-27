@@ -35,7 +35,6 @@ def parse_args():
     parser.add_argument('--new_value_encoding', action='store_true')
     parser.add_argument('--normalise_varis', action='store_true')
     parser.add_argument('--time_2_vec', action='store_true')
-    parser.add_argument('--combine_feature_value_encoding', action='store_true')
     parser.add_argument(
         "--text_padding",
         action='store_true'
@@ -188,6 +187,7 @@ def mortality_results(y_true, y_pred, class_weights={1:1, 0:1},**kwargs):
     bce_loss = torch.nn.functional.binary_cross_entropy(y_pred, y_true, weight=weights).item()
 
     f1 = f1_score(y_true, (y_pred>0.5))
+
 
     return {'PR_AUC': pr_auc, 'ROC_AUC': roc_auc, 'MIN_RP': min_rp, 'LOSS': bce_loss, 'F1': f1}
 

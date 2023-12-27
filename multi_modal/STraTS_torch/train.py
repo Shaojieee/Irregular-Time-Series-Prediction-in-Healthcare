@@ -1,7 +1,7 @@
 from utils import *
 from data import *
-from model import STraTS
-from strats_text_model import STraTS_text, load_Bert
+from orig_model import STraTS as orig_STraTS
+from strats_text_model import load_Bert
 from optuna_utils import objective
 
 from collections import Counter
@@ -208,7 +208,7 @@ def train_mortality_model(args, accelerator):
 
                 bert = accelerator.prepare(bert)
                 
-                model = STraTS(
+                model = orig_STraTS(
                     D=D, # No. of static variables
                     V=V+1, # No. of variables / features
                     d=args.d, # Input size of attention layer
@@ -225,7 +225,7 @@ def train_mortality_model(args, accelerator):
                     time_2_vec=args.time_2_vec
                 )
             else:
-                model = STraTS(
+                model = orig_STraTS(
                     # No. of Demographics features
                     D=D,
                     # No. of Variable Embedding Size
@@ -236,8 +236,7 @@ def train_mortality_model(args, accelerator):
                     dropout=args.dropout,
                     forecast=False,
                     new_value_encoding=args.new_value_encoding,
-                    time_2_vec=args.time_2_vec,
-                    combine_feature_value_encoding=args.combine_feature_value_encoding
+                    time_2_vec=args.time_2_vec
                 )
             
 
@@ -425,8 +424,9 @@ def tune_mortality_model(args, accelerator):
     args.D = D
     args.V = V
 
-    if args.optuna_sampler:
+    if os.path.exists(args.optuna_sampler):
         sampler = pickle.load(open(args.optuna_sampler, "rb"))
+        print('Sampler loaded!')
     else:
         sampler = optuna.samplers.TPESampler(seed=42)
 
@@ -442,7 +442,7 @@ def tune_mortality_model(args, accelerator):
 
     study.optimize(
         lambda x: objective(x, train_dataset, val_dataset, accelerator, args), 
-        n_trials=30,
+        n_trials=80,
         timeout=5*60*60
     )
 
