@@ -1,6 +1,8 @@
 import torch.nn as nn
+import torch.nn.functional as F
 import torch 
 import numpy as np
+import math
 
 
 def initialise_linear_layer(layer):
@@ -86,7 +88,7 @@ class Attention(nn.Module):
 
 class STraTS_Transformer(nn.Module):
     def __init__(self, d, N=2, h=8, dk=None, dv=None, dff=None, dropout=0, epsilon=1e-07):
-        super(Transformer, self).__init__()
+        super(STraTS_Transformer, self).__init__()
         
         self.N, self.h, self.dk, self.dv, self.dff, self.dropout = N, h, dk, dv, dff, dropout
         self.epsilon = epsilon * epsilon
@@ -302,15 +304,15 @@ class MultiHeadAttention(nn.Module):
         assert self.head_dim * num_heads == self.embed_dim, "embed_dim must be divisible by num_heads"
         self.scaling = self.head_dim ** -0.5
 
-        self.in_proj_weight = Parameter(torch.Tensor(3 * embed_dim, embed_dim))
+        self.in_proj_weight = nn.Parameter(torch.Tensor(3 * embed_dim, embed_dim))
         self.register_parameter('in_proj_bias', None)
         if bias:
-            self.in_proj_bias = Parameter(torch.Tensor(3 * embed_dim))
+            self.in_proj_bias = nn.Parameter(torch.Tensor(3 * embed_dim))
         self.out_proj = nn.Linear(embed_dim, embed_dim, bias=bias)
 
         if add_bias_kv:
-            self.bias_k = Parameter(torch.Tensor(1, 1, embed_dim))
-            self.bias_v = Parameter(torch.Tensor(1, 1, embed_dim))
+            self.bias_k = nn.Parameter(torch.Tensor(1, 1, embed_dim))
+            self.bias_v = nn.Parameter(torch.Tensor(1, 1, embed_dim))
         else:
             self.bias_k = self.bias_v = None
 
@@ -488,7 +490,7 @@ class TransformerEncoder(nn.Module):
 
         self.normalize = True
         if self.normalize:
-            self.layer_norm = LayerNorm(embed_dim)
+            self.layer_norm = nn.LayerNorm(embed_dim)
 
     def forward(self, x_in, x_in_k = None, x_in_v = None):
         """
@@ -579,9 +581,9 @@ class TransformerEncoderLayer(nn.Module):
         self.res_dropout = res_dropout
         self.normalize_before = True
 
-        self.fc1 = Linear(self.embed_dim, 4*self.embed_dim)   # The "Add & Norm" part in the paper
-        self.fc2 = Linear(4*self.embed_dim, self.embed_dim)
-        self.layer_norms = nn.ModuleList([LayerNorm(self.embed_dim) for _ in range(2)])
+        self.fc1 = nn.Linear(self.embed_dim, 4*self.embed_dim)   # The "Add & Norm" part in the paper
+        self.fc2 = nn.Linear(4*self.embed_dim, self.embed_dim)
+        self.layer_norms = nn.ModuleList([nn.LayerNorm(self.embed_dim) for _ in range(2)])
 
     def forward(self, x, x_k=None, x_v=None):
         """
@@ -624,3 +626,18 @@ class TransformerEncoderLayer(nn.Module):
             return self.layer_norms[i](x)
         else:
             return x
+
+
+def fill_with_neg_inf(t):
+    """FP16-compatible function that fills a tensor with -inf."""
+    return t.float().fill_(float('-inf')).type_as(t)
+
+
+def buffered_future_mask(tensor, tensor2=None):
+    dim1 = dim2 = tensor.size(0)
+    if tensor2 is not None:
+        dim2 = tensor2.size(0)
+    future_mask = torch.triu(fill_with_neg_inf(torch.ones(dim1, dim2)), 1+abs(dim2-dim1))
+    if tensor.is_cuda:
+        future_mask = future_mask.cuda()
+    return future_mask[:dim1, :dim2]

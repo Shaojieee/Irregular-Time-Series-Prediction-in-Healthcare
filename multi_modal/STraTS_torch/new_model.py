@@ -1,7 +1,9 @@
 import torch.nn as nn
 import torch 
+import numpy as np
+import math
 
-from module import CVE, TVE, Time2Vec, MultiTimeAttention, TransformerEncoder
+from module import CVE, TVE, Time2Vec, MultiTimeAttention, TransformerEncoder, Attention
 
 
 class custom_STraTS(nn.Module):
@@ -17,11 +19,11 @@ class custom_STraTS(nn.Module):
         time_2_vec=False,
     ):
         super(custom_STraTS, self).__init__()
-
+        self.D = D
         cve_units = int(np.sqrt(d))
 
         self.values_stack = CVE(
-            hid_dim=cve_units
+            hid_dim=cve_units,
             output_dim=d
         )
 
@@ -31,7 +33,7 @@ class custom_STraTS(nn.Module):
             )
         else:
             self.times_stack = CVE(
-                hid_dim=cve_units
+                hid_dim=cve_units,
                 output_dim=d
             )
         
@@ -56,6 +58,11 @@ class custom_STraTS(nn.Module):
             attn_mask=False,
             q_seq_len=None, 
             kv_seq_len=None
+        )
+
+        self.atten_stack = Attention(
+            d=d,
+            hid_dim=2*d
         )
 
         if self.D>0:
@@ -104,7 +111,7 @@ class custom_STraTS(nn.Module):
 
         # Calculating the weights for cont_emb
         mask = torch.clamp(varis, 0, 1)
-        attn_weights = self.attn_stack(CTE_emb, mask)
+        attn_weights = self.atten_stack(CTE_emb, mask)
         print(f'attn_weights: {attn_weights.shape}')
         
         # Getting the weighted avg from the embeddings
@@ -116,6 +123,8 @@ class custom_STraTS(nn.Module):
             conc = torch.cat([fused_emb, demo_enc], dim=-1)
         else:
             conc = fused_emb
+        
+        print(f'conc: {conc.shape}')
 
 
         output = self.output_stack(conc)
