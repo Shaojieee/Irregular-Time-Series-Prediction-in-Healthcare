@@ -1,6 +1,7 @@
 from utils import *
 from data import *
 from orig_model import STraTS as orig_STraTS
+from new_model import custom_STraTS
 from strats_text_model import load_Bert
 from optuna_utils import objective
 
@@ -222,6 +223,19 @@ def train_mortality_model(args, accelerator):
                     forecast=False, 
                     return_embeddings=False,
                     new_value_encoding=args.new_value_encoding,
+                    time_2_vec=args.time_2_vec
+                )
+            elif args.custom_strats:
+                model = custom_STraTS(
+                    # No. of Demographics features
+                    D=D,
+                    # No. of Variable Embedding Size
+                    V=V,
+                    d=args.d,
+                    N=args.N,
+                    he=args.he,
+                    dropout=args.dropout,
+                    forecast=False,
                     time_2_vec=args.time_2_vec
                 )
             else:
