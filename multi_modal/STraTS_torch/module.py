@@ -80,6 +80,8 @@ class Attention(nn.Module):
     def forward(self, X, mask, mask_value=-1e9):
         attn_weights = self.stack(X)
         mask = torch.unsqueeze(mask, dim=-1)
+
+        mask_value = -1e+30 if attn_weights.dtype == torch.float32 else -1e+4
         attn_weights = mask*attn_weights + (1-mask)*mask_value
         attn_weights = self.softmax(attn_weights)
         
@@ -270,7 +272,7 @@ class MultiTimeAttention(nn.Module):
                 mask=mask.unsqueeze(-1)
 
             print(f' MultiTime Attention mask: {mask.shape}')
-            scores = scores.masked_fill(mask.unsqueeze(-3) == 0, -1e9)
+            scores = scores.masked_fill(mask.unsqueeze(-3) == 0,  -1e+30 if scores.dtype == torch.float32 else -1e+4)
         p_attn = F.softmax(scores, dim = -2)
         print(f' MultiTime Attention p_attn: {p_attn.shape}')
         if dropout is not None:
