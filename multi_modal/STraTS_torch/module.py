@@ -77,7 +77,7 @@ class Attention(nn.Module):
         self.softmax = nn.Softmax(dim=-2)
         self.stack.apply(initialise_linear_layer)
     
-    def forward(self, X, mask, mask_value=-1e30):
+    def forward(self, X, mask, mask_value=-1e9):
         attn_weights = self.stack(X)
         mask = torch.unsqueeze(mask, dim=-1)
         attn_weights = mask*attn_weights + (1-mask)*mask_value
@@ -260,20 +260,27 @@ class MultiTimeAttention(nn.Module):
         d_k = query.size(-1)
         scores = torch.matmul(query, key.transpose(-2, -1)) \
                  / math.sqrt(d_k)
-        scores = scores.unsqueeze(-1).repeat_interleave(dim, dim=-1)
+        
+        print(f' MultiTime Attention scores: {scores.shape}')
+        
+        scores = scores.unsqueeze(-1)
+        print(f' MultiTime Attention scores: {scores.shape}')
         if mask is not None:
             if len(mask.shape)==3:
                 mask=mask.unsqueeze(-1)
 
-            scores = scores.masked_fill(mask.unsqueeze(-3) == 0, -10000)
+            print(f' MultiTime Attention mask: {mask.shape}')
+            scores = scores.masked_fill(mask.unsqueeze(-3) == 0, -1e9)
         p_attn = F.softmax(scores, dim = -2)
+        print(f' MultiTime Attention p_attn: {p_attn.shape}')
         if dropout is not None:
             p_attn=F.dropout(p_attn, p=dropout, training=self.training)
             # p_attn = dropout(p_attn)
+        print(f' MultiTime Attention value.unsqueeze(-3): {value.unsqueeze(-3).shape}')
         return torch.sum(p_attn*value.unsqueeze(-3), -2), p_attn
 
 
-    def forward(self, query, key, value, mask=None, ):
+    def forward(self, query, key, value, mask=None):
         "Compute 'Scaled Dot Product Attention'"
         # import pdb; pdb.set_trace()
         batch, seq_len, dim = value.size()
@@ -283,9 +290,19 @@ class MultiTimeAttention(nn.Module):
         value = value.unsqueeze(1)
         query, key = [l(x).view(x.size(0), -1, self.h, self.embed_time_k).transpose(1, 2)
                       for l, x in zip(self.linears, (query, key))]
+        
+        print(f' MultiTime Attention query: {query.shape}')
+        print(f' MultiTime Attention key: {key.shape}')
+        print(f' MultiTime Attention value: {value.shape}')
+
         x, _ = self.attention(query, key, value, mask, self.dropout)
+
+
+        print(f' MultiTime Attention output: {x.shape}')
         x = x.transpose(1, 2).contiguous() \
              .view(batch, -1, self.h * dim)
+        
+        print(f' MultiTime Attention output: {x.shape}')
         return self.linears[-1](x)
 
 

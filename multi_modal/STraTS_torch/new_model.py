@@ -3,7 +3,7 @@ import torch
 import numpy as np
 import math
 
-from module import CVE, TVE, Time2Vec, MultiTimeAttention, TransformerEncoder, Attention
+from module import CVE, TVE, Time2Vec, MultiTimeAttention, TransformerEncoder, Attention, STraTS_Transformer
 
 
 class custom_STraTS(nn.Module):
@@ -47,17 +47,28 @@ class custom_STraTS(nn.Module):
             dropout=dropout,
         )
 
-        self.CTE = TransformerEncoder(
-            embed_dim=d, 
-            num_heads=he, 
-            layers=N,
-            attn_dropout=dropout, 
-            relu_dropout=dropout, 
-            res_dropout=dropout,     
-            embed_dropout=dropout, 
-            attn_mask=False,
-            q_seq_len=None, 
-            kv_seq_len=None
+        # self.CTE = TransformerEncoder(
+        #     embed_dim=d, 
+        #     num_heads=he, 
+        #     layers=N,
+        #     attn_dropout=dropout, 
+        #     relu_dropout=dropout, 
+        #     res_dropout=dropout,     
+        #     embed_dropout=dropout, 
+        #     attn_mask=False,
+        #     q_seq_len=None, 
+        #     kv_seq_len=None
+        # )
+
+        self.CTE = STraTS_Transformer(
+            d=d, 
+            N=N, 
+            h=he, 
+            dk=None, 
+            dv=None, 
+            dff=None, 
+            dropout=dropout, 
+            epsilon=1e-07
         )
 
         self.atten_stack = Attention(
@@ -96,21 +107,31 @@ class custom_STraTS(nn.Module):
         print(f'ts_values_emb: {ts_values_emb.shape}')
         print(f'ts_times_emb: {ts_times_emb.shape}')
 
+        mask = torch.clamp(varis, 0, 1)
+        print(f'mask: {mask.shape}')
 
         query_key_emb = ts_varis_emb + ts_times_emb
 
-        time_atten = self.mTAND(
+        time_atten_values_emb = self.mTAND(
             query=query_key_emb,
             key=query_key_emb,
-            value=ts_values_emb
+            value=ts_values_emb,
+            mask=mask
         )
-        print(f'time_atten: {time_atten.shape}')
 
-        CTE_emb = self.CTE(time_atten)
+
+        print(f'time_atten: {time_atten_values_emb.shape}')
+        # time_atten = time_atten.transpose(0,1)
+        # print(f'time_atten: {time_atten.shape}')
+
+        comb_emb = time_atten_values_emb + ts_varis_emb + ts_times_emb
+
+        CTE_emb = self.CTE(comb_emb, mask)
         print(f'CTE_emb: {CTE_emb.shape}')
+        # CTE_emb = CTE_emb.transpose(0,1)
+        # print(f'CTE_emb: {CTE_emb.shape}')
 
         # Calculating the weights for cont_emb
-        mask = torch.clamp(varis, 0, 1)
         attn_weights = self.atten_stack(CTE_emb, mask)
         print(f'attn_weights: {attn_weights.shape}')
         

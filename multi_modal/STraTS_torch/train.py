@@ -157,6 +157,8 @@ def train_mortality_model(args, accelerator):
         dataloader_collate_fn = pad_text_data
     elif args.new_value_encoding:
         dataloader_collate_fn = lambda x: combine_values_varis(x, normalise_varis=args.normalise_varis)
+    elif args.normalise_time:
+        dataloader_collate_fn = lambda x: normalise_time(x, max_time=24)
     else:
         dataloader_collate_fn = None
 

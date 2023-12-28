@@ -523,13 +523,17 @@ class TSMixed(nn.Module):
 
             if self.irregular_learn_emb_ts:
                 time_key_ts = self.learn_time_embedding(ts_tt_list).to(self.device)
+                print(f'time_key_ts: {time_key_ts.shape}')
                 time_query = self.learn_time_embedding(self.time_query.unsqueeze(0)).to(self.device)
+                print(f'time_query: {time_query.shape}')
 
                 x_ts_irg = torch.cat((x_ts,x_ts_mask), 2)
                 x_ts_mask = torch.cat((x_ts_mask,x_ts_mask), 2)
-
+                print(f'x_ts_irg: {x_ts_irg.shape}')
                 proj_x_ts_irg=self.time_attn_ts(time_query, time_key_ts, x_ts_irg, x_ts_mask)
+                print(f'proj_x_ts_irg: {proj_x_ts_irg.shape}')
                 proj_x_ts_irg=proj_x_ts_irg.transpose(0, 1)
+                print(f'proj_x_ts_irg: {proj_x_ts_irg.shape}')
 
             if self.reg_ts and reg_ts!=None:
                 x_ts_reg = reg_ts.transpose(1, 2)
@@ -554,6 +558,7 @@ class TSMixed(nn.Module):
                 # for name, parameter in self.moe.named_parameters():
                 mixup_rate=self.moe(moe_gate)
                 proj_x_ts=mixup_rate*proj_x_ts_irg+(1-mixup_rate)*proj_x_ts_reg
+                
 
             else:
                 if self.irregular_learn_emb_ts:
@@ -563,7 +568,7 @@ class TSMixed(nn.Module):
                 else:
                     raise ValueError("Unknown time series type")
 
-
+            print(f'proj_x_ts: {proj_x_ts.shape}')
             if self.TS_model=='CNN':
                 proj_x_ts = proj_x_ts.permute(1, 2, 0)
                 proj_x_ts = self.trans_ts_mem(proj_x_ts)
@@ -572,22 +577,28 @@ class TSMixed(nn.Module):
                     _, (proj_x_ts, _) = self.trans_ts_mem(proj_x_ts)
             else:
                 proj_x_ts = self.trans_ts_mem(proj_x_ts)
+                
+            print(f'proj_x_ts: {proj_x_ts.shape}')
+            
             if  self.TS_model!='CNN':
                 last_h_ts=proj_x_ts[-1]
 
             else:
                 last_h_ts=proj_x_ts
 
- 
+            print(f'proj_x_ts: {proj_x_ts.shape}')
             if self.modeltype=="TS" :
                 last_hs=last_h_ts
             else:
                 raise ValueError("Unknown model type")
                        
-    
+            print(f'last_hs: {last_hs.shape}')
             last_hs_proj = self.proj2(F.dropout(F.relu(self.proj1(last_h_ts)), p=self.dropout, training=self.training))
+            print(f'last_hs_proj: {last_hs_proj.shape}')
             last_hs_proj += last_hs
+            print(f'last_hs_proj: {last_hs_proj.shape}')
             output = self.out_layer(last_hs_proj)
+            print(f'output: {output.shape}')
 
 
         if self.Interp:

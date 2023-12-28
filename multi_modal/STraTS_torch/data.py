@@ -682,3 +682,11 @@ def combine_values_varis(batch, normalise_varis=False):
     
     return X_demos, X_times, X_values, X_varis, Y
 
+
+def normalise_time(batch, max_time=24):
+    X_demos, X_times, X_values, X_varis, Y = zip(*batch)
+
+    time_min, time_max = X_times.min(), max_time
+    X_times = ((X_times - time_min) / (time_max - time_min) * (1 - 0)) + 0
+
+    return X_demos, X_times, X_values, X_varis, Y
