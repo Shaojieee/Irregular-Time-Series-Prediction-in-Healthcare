@@ -684,7 +684,14 @@ def combine_values_varis(batch, normalise_varis=False):
 
 
 def normalise_time(batch, max_time=24):
+
     X_demos, X_times, X_values, X_varis, Y = zip(*batch)
+
+    X_demos = torch.stack(X_demos)
+    X_times = torch.stack(X_times)
+    X_values = torch.stack(X_values)
+    X_varis = torch.stack(X_varis)
+    Y = torch.stack(Y)
 
     time_min, time_max = X_times.min(), max_time
     X_times = ((X_times - time_min) / (time_max - time_min) * (1 - 0)) + 0

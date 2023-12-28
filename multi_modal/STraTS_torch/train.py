@@ -237,7 +237,6 @@ def train_mortality_model(args, accelerator):
                     N=args.N,
                     he=args.he,
                     dropout=args.dropout,
-                    forecast=False,
                     time_2_vec=args.time_2_vec
                 )
             else:
