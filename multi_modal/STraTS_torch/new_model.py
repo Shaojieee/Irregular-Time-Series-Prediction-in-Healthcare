@@ -103,12 +103,12 @@ class custom_STraTS(nn.Module):
         ts_varis_emb = self.varis_stack(varis)
         ts_values_emb = self.values_stack(values)
         ts_times_emb = self.times_stack(times)
-        print(f'ts_varis_emb: {ts_varis_emb.shape}')
-        print(f'ts_values_emb: {ts_values_emb.shape}')
-        print(f'ts_times_emb: {ts_times_emb.shape}')
+        # print(f'ts_varis_emb: {ts_varis_emb.shape}')
+        # print(f'ts_values_emb: {ts_values_emb.shape}')
+        # print(f'ts_times_emb: {ts_times_emb.shape}')
 
         mask = torch.clamp(varis, 0, 1)
-        print(f'mask: {mask.shape}')
+        # print(f'mask: {mask.shape}')
 
         query_key_emb = ts_varis_emb + ts_times_emb
 
@@ -120,24 +120,24 @@ class custom_STraTS(nn.Module):
         )
 
 
-        print(f'time_atten: {time_atten_values_emb.shape}')
+        # print(f'time_atten: {time_atten_values_emb.shape}')
         # time_atten = time_atten.transpose(0,1)
         # print(f'time_atten: {time_atten.shape}')
 
         comb_emb = time_atten_values_emb + ts_varis_emb + ts_times_emb
 
         CTE_emb = self.CTE(comb_emb, mask)
-        print(f'CTE_emb: {CTE_emb.shape}')
+        # print(f'CTE_emb: {CTE_emb.shape}')
         # CTE_emb = CTE_emb.transpose(0,1)
         # print(f'CTE_emb: {CTE_emb.shape}')
 
         # Calculating the weights for cont_emb
         attn_weights = self.atten_stack(CTE_emb, mask)
-        print(f'attn_weights: {attn_weights.shape}')
+        # print(f'attn_weights: {attn_weights.shape}')
         
         # Getting the weighted avg from the embeddings
         fused_emb = torch.sum(CTE_emb * attn_weights, dim=-2)
-        print(f'fused_emb: {fused_emb.shape}')
+        # print(f'fused_emb: {fused_emb.shape}')
 
         if self.D>0:
             demo_enc = self.demo_stack(demo)
@@ -145,7 +145,7 @@ class custom_STraTS(nn.Module):
         else:
             conc = fused_emb
         
-        print(f'conc: {conc.shape}')
+        # print(f'conc: {conc.shape}')
 
 
         output = self.output_stack(conc)

@@ -45,7 +45,7 @@ def parse_args():
         "--text_max_length",
         type=int,
         default=1024,
-        help="mMximum total input sequence length after tokenization. Sequences longer than this will be truncated,sequences shorter will be padded if `--text_padding` is passed.",
+        help="Maximum total input sequence length after tokenization. Sequences longer than this will be truncated,sequences shorter will be padded if `--text_padding` is passed.",
     )
     parser.add_argument(
         "--d",
