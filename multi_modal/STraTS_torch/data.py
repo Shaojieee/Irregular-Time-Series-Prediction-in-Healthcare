@@ -645,3 +645,55 @@ def pad_text_data(batch):
 
 
     return X_demos, X_times, X_values, X_varis, Y, X_text_tokens, X_text_attention_mask, X_text_times, X_text_time_mask, X_text_feature_varis
+
+
+def combine_values_varis_with_text(batch, normalise_varis=False):
+
+    X_demos, X_times, X_values, X_varis, Y, X_text_tokens, X_text_attention_mask, X_text_times, X_text_time_mask, X_text_feature_varis = batch
+
+    if normalise_varis:
+        varis_min, varis_max = X_varis.min(), X_varis.max()
+        temp_varis = ((X_varis - varis_min) / (varis_max - varis_min) * (1 - 0)) + 0
+    else:
+        temp_varis = X_varis
+
+    X_values = torch.cat([torch.unsqueeze(X_values,dim=-1), torch.unsqueeze(temp_varis, dim=-1)], dim=-1)
+    
+    return X_demos, X_times, X_values, X_varis, Y, X_text_tokens, X_text_attention_mask, X_text_times, X_text_time_mask, X_text_feature_varis
+
+
+def combine_values_varis(batch, normalise_varis=False):
+    
+    X_demos, X_times, X_values, X_varis, Y = zip(*batch)
+
+    X_demos = torch.stack(X_demos)
+    X_times = torch.stack(X_times)
+    X_values = torch.stack(X_values)
+    X_varis = torch.stack(X_varis)
+    Y = torch.stack(Y)
+
+    if normalise_varis:
+        varis_min, varis_max = X_varis.min(), X_varis.max()
+        temp_varis = ((X_varis - varis_min) / (varis_max - varis_min) * (1 - 0)) + 0
+    else:
+        temp_varis = X_varis
+
+    X_values = torch.cat([torch.unsqueeze(X_values,dim=-1), torch.unsqueeze(temp_varis, dim=-1)], dim=-1)
+    
+    return X_demos, X_times, X_values, X_varis, Y
+
+
+def normalise_time(batch, max_time=24):
+
+    X_demos, X_times, X_values, X_varis, Y = zip(*batch)
+
+    X_demos = torch.stack(X_demos)
+    X_times = torch.stack(X_times)
+    X_values = torch.stack(X_values)
+    X_varis = torch.stack(X_varis)
+    Y = torch.stack(Y)
+
+    time_min, time_max = X_times.min(), max_time
+    X_times = ((X_times - time_min) / (time_max - time_min) * (1 - 0)) + 0
+
+    return X_demos, X_times, X_values, X_varis, Y

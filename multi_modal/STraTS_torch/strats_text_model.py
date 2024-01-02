@@ -1,4 +1,4 @@
-from model import STraTS
+from orig_model import STraTS
 import torch.nn as nn
 from torch.nn import Parameter
 import torch.nn.functional as F
