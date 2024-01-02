@@ -144,6 +144,7 @@ python -W ignore train.py  \
                     --early_stopper_min_delta 0 \
                     --early_stopper_mode "min" \
                     --early_stopper_restore_best_weights \
+                    --early_stopper_metric "F1" \
                     --train_batch_size 16 \
                     --eval_batch_size 16 \
                     --lds 100 \

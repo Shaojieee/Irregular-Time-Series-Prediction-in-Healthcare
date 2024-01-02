@@ -53,7 +53,7 @@ def train_forecasting_model(args, accelerator):
     train_dataloader = DataLoader(train_dataset, batch_size=args.train_batch_size)
     val_dataloader = DataLoader(val_dataset, batch_size=args.eval_batch_size)
 
-    model = STraTS(
+    model = orig_STraTS(
         # No. of Demographics features
         D=D,
         # Input size of the  Variable Embedding
@@ -71,7 +71,7 @@ def train_forecasting_model(args, accelerator):
     optimiser = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
 
     loss_fn = forecast_loss
-    model, optimiser, train_dataloader,val_dataloader = accelerator.prepare(model, optimiser, train_dataloader,val_dataloader)
+    model, optimiser, train_dataloader,val_dataloader = accelerator.prepare(model, optimiser, train_dataloader, val_dataloader)
 
     early_stopper = EarlyStopper(
         patience=args.patience,
@@ -117,7 +117,7 @@ def train_forecasting_model(args, accelerator):
         )
 
         # Early Stopper check
-        if early_stopper.on_epoch_end(model=model, loss=results['LOSS'], epoch=epoch):
+        if early_stopper.on_epoch_end(model=model, loss=results[args.early_stopper_metric], epoch=epoch):
             break
     
     # End of training
@@ -361,7 +361,7 @@ def train_mortality_model(args, accelerator):
                 )
 
                 # Early Stopper check
-                if early_stopper.on_epoch_end(model=model, loss=results['LOSS'], epoch=epoch):
+                if early_stopper.on_epoch_end(model=model, loss=results[args.early_stopper_metric], epoch=epoch):
                     break
     
             # End of training

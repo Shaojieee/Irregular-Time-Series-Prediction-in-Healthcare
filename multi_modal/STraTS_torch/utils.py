@@ -118,6 +118,7 @@ def parse_args():
         "--early_stopper_mode", type=str, default='min', help="forecasting_model or mortality_model"
     )
     parser.add_argument('--early_stopper_restore_best_weights', action='store_true')
+    parser.add_argument('--early_stopper_metric', type=str, default='LOSS', help='Metric to monitor when using early stopper: ROC_AUC, PR_AUC, LOSS, F1, MIN_RP')
     parser.add_argument(
         "--train_batch_size",
         type=int,
