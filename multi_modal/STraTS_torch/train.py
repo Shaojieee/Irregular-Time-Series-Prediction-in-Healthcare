@@ -49,26 +49,50 @@ def main():
 
 def train_forecasting_model(args, accelerator):
     train_dataset, val_dataset, fore_max_len, V, D = load_forecast_dataset(args.data_dir)
+    
+    if args.new_value_encoding:
+        dataloader_collate_fn = lambda x: combine_values_varis(x, normalise_varis=args.normalise_varis)
+    elif args.normalise_time:
+        dataloader_collate_fn = lambda x: normalise_time(x, max_time=24)
+    else:
+        dataloader_collate_fn = None
 
-    train_dataloader = DataLoader(train_dataset, batch_size=args.train_batch_size)
-    val_dataloader = DataLoader(val_dataset, batch_size=args.eval_batch_size)
+    print(f'Training Dataset: {len(train_dataset)}')
+    print(f'Validation Dataset: {len(val_dataset)}')
 
-    model = orig_STraTS(
-        # No. of Demographics features
-        D=D,
-        # Input size of the  Variable Embedding
-        V=V,
-        # Output size of the embedding vector
-        d=args.d,
-        # No. of Encoder blocks (Contextual Triplet Embedding)
-        N=args.N,
-        # No. of attention heads in Encoder blocks (Contextual Triplet Embedding)
-        he=args.he,
-        dropout=args.dropout,
-        forecast=True
-    )
+    train_dataloader = DataLoader(train_dataset, batch_size=args.train_batch_size, collate_fn=dataloader_collate_fn)
+    val_dataloader = DataLoader(val_dataset, batch_size=args.eval_batch_size, collate_fn=dataloader_collate_fn)
 
-    optimiser = torch.optim.Adam(model.parameters(), lr=args.learning_rate)
+    if args.custom_strats:
+        model = custom_STraTS(
+            # No. of Demographics features
+            D=D,
+            # No. of Variable Embedding Size
+            V=V,
+            d=args.d,
+            N=args.N,
+            he=args.he,
+            dropout=args.dropout,
+            time_2_vec=args.time_2_vec,
+            forecast=True
+        )
+    else:
+        model = orig_STraTS(
+            # No. of Demographics features
+            D=D,
+            # No. of Variable Embedding Size
+            V=V,
+            d=args.d,
+            N=args.N,
+            he=args.he,
+            dropout=args.dropout,
+            forecast=True,
+            new_value_encoding=args.new_value_encoding,
+            time_2_vec=args.time_2_vec
+        )
+
+
+    optimiser = torch.optim.Adam(model.parameters(), lr=args.ts_learning_rate)
 
     loss_fn = forecast_loss
     model, optimiser, train_dataloader,val_dataloader = accelerator.prepare(model, optimiser, train_dataloader, val_dataloader)
@@ -86,7 +110,6 @@ def train_forecasting_model(args, accelerator):
     )
 
 
-    # TODO: Include training results log file as well
     for epoch in tqdm(range(args.num_epochs)):
         if time_check(args.start_time):
             break
@@ -106,14 +129,15 @@ def train_forecasting_model(args, accelerator):
             optimiser.step()
             optimiser.zero_grad()
             total_loss += loss.detach().cpu().item()
-        print(f'Train Metrics: Epoch: {epoch} LOSS: {total_loss:.6f}')
+        print(f'Train Metrics: Epoch: {epoch} LOSS: {total_loss/(args.samples_per_epoch/args.train_batch_size):.6f}')
         
         model.eval()
         # Evaluation after 1 epoch
         results = eval_results.on_epoch_end(
             model=model,
             epoch=epoch,
-            V=V
+            V=V,
+            with_text=args.with_text
         )
 
         # Early Stopper check

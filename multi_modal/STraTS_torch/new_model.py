@@ -17,6 +17,7 @@ class custom_STraTS(nn.Module):
         he,
         dropout=0.1,
         time_2_vec=False,
+        forecast=False
     ):
         super(custom_STraTS, self).__init__()
         self.D = D
@@ -83,8 +84,11 @@ class custom_STraTS(nn.Module):
                 nn.Linear(in_features=2*d, out_features=d),
                 nn.Tanh()
             )
-        
-        if self.D>0:
+        if forecast and self.D>0:
+            self.output_stack = nn.Linear(in_features=d+d, out_features=V)
+        elif forecast and self.D==0:
+            self.output_stack = nn.Linear(in_features=d, out_features=V)
+        elif self.D>0:
             self.output_stack = nn.Sequential(
                 nn.Linear(in_features=d+d, out_features=1),
                 nn.Sigmoid(),
