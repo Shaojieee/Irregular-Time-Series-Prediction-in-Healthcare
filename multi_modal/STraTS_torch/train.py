@@ -33,7 +33,7 @@ def main():
         args.mixed_precision="fp16"
     else:
         args.mixed_precision="no"
-    accelerator = Accelerator(fp16=args.fp16, mixed_precision=args.mixed_precision,cpu=args.cpu)
+    accelerator = Accelerator(fp16=args.fp16, mixed_precision=args.mixed_precision,cpu=args.cpu, gradient_accumulation_steps=args.gradient_accumulation_steps)
 
     device = accelerator.device
     print(f'Device:{device}')
@@ -120,15 +120,16 @@ def train_forecasting_model(args, accelerator):
             # Restricting the number of samples per training epoch
             if args.samples_per_epoch!=None and args.samples_per_epoch<step*args.train_batch_size:
                 break
-            
-            X_demos, X_times, X_values, X_varis, Y = batch
+            with accelerator.accumulate(model):
+                X_demos, X_times, X_values, X_varis, Y = batch
 
-            Y_pred = model(X_demos, X_times, X_values, X_varis)
-            loss = loss_fn(Y, Y_pred, V)
-            accelerator.backward(loss)
-            optimiser.step()
-            optimiser.zero_grad()
-            total_loss += loss.detach().cpu().item()
+                Y_pred = model(X_demos, X_times, X_values, X_varis)
+                loss = loss_fn(Y, Y_pred, V)
+                accelerator.backward(loss)
+                optimiser.step()
+                optimiser.zero_grad()
+                total_loss += loss.detach().cpu().item()
+                accelerator.backward(loss)
         print(f'Train Metrics: Epoch: {epoch} LOSS: {total_loss/(args.samples_per_epoch/args.train_batch_size):.6f}')
         
         model.eval()
@@ -357,21 +358,21 @@ def train_mortality_model(args, accelerator):
                 model.train()
                 total_loss = 0.0
                 for step, batch in tqdm(enumerate(train_dataloader)):
-
-                    if args.with_text:
-                        X_demos, X_times, X_values, X_varis, Y, X_text_tokens, X_text_attention_mask, X_text_times, X_text_time_mask, X_text_feature_varis = batch
-                        Y_pred = model(X_demos, X_times, X_values, X_varis, X_text_tokens, X_text_attention_mask, X_text_times, X_text_feature_varis)
-                    else:
-                        X_demos, X_times, X_values, X_varis, Y = batch
-                        Y_pred = model(X_demos, X_times, X_values, X_varis)
+                    with accelerator.accumulate(model):
+                        if args.with_text:
+                            X_demos, X_times, X_values, X_varis, Y, X_text_tokens, X_text_attention_mask, X_text_times, X_text_time_mask, X_text_feature_varis = batch
+                            Y_pred = model(X_demos, X_times, X_values, X_varis, X_text_tokens, X_text_attention_mask, X_text_times, X_text_feature_varis)
+                        else:
+                            X_demos, X_times, X_values, X_varis, Y = batch
+                            Y_pred = model(X_demos, X_times, X_values, X_varis)
                     
 
-                    loss = loss_fn(Y, Y_pred)
+                        loss = loss_fn(Y, Y_pred)
 
-                    accelerator.backward(loss)
-                    optimiser.step()
-                    optimiser.zero_grad()
-                    total_loss += loss.detach().cpu().item()
+                        accelerator.backward(loss)
+                        optimiser.step()
+                        optimiser.zero_grad()
+                        total_loss += loss.detach().cpu().item()
                 
                 avg_loss = total_loss / len(train_dataloader)
                 print(f'Train Metrics: Epoch: {epoch} AVG LOSS: {avg_loss:.6f}')
