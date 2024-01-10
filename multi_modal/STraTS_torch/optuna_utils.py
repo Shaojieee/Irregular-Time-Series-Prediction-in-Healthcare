@@ -6,18 +6,17 @@ from torch.utils.data import DataLoader
 from utils import *
 from data import combine_values_varis, combine_values_varis_with_text, pad_text_data
 from orig_model import STraTS as orig_STraTS
+from new_model import custom_STraTS
 from strats_text_model import load_Bert
 
 def objective(trial, train_dataset, val_dataset, accelerator, args):
 
     params = {
         'learning_rate': trial.suggest_float('learning_rate', 0.0001, 0.001, log=True),
-        'batch_size': trial.suggest_int('batch_size', 4, 64, 4),
-        # 'embedding_size': trial.suggest_int('varis_dim', 4, args.d, 4),
-        # 'TVE_hid_dim': trial.suggest_int('TVE_hid_dim', 4, args.d, 4),
+        'batch_size': trial.suggest_int('batch_size', 4, 16, 4),
         'N': trial.suggest_int('num_encoders', 1, 4, 1),
-        'he': trial.suggest_int('num_heads', 2,8, 1),
-        'd': trial.suggest_int('num_emb_dim', 32, 128, 4)
+        'he': trial.suggest_int('num_heads', 2, 8, 2),
+        'd': trial.suggest_int('num_emb_dim', 16, 48, 4)
     }
 
     model = build_model(params, args)
@@ -37,8 +36,8 @@ def build_model(params, args):
         bert = accelerator.prepare(bert)
         
         model = orig_STraTS(
-            D=D, # No. of static variables
-            V=V+1, # No. of variables / features
+            D=args.D, # No. of static variables
+            V=args.V+1, # No. of variables / features
             d=params['d'], # Input size of attention layer
             N=params['N'], # No. of Encoder blocks
             he=params['he'], # No. of heads in multi headed encoder blocks
@@ -50,6 +49,18 @@ def build_model(params, args):
             forecast=False, 
             return_embeddings=False,
             new_value_encoding=args.new_value_encoding,
+            time_2_vec=args.time_2_vec
+        )
+    elif args.custom_STraTS:
+        model = custom_STraTS(
+            # No. of Demographics features
+            D=args.D,
+            # No. of Variable Embedding Size
+            V=args.V,
+            d=params['d'],
+            N=params['N'],
+            he=params['he'],
+            dropout=args.dropout,
             time_2_vec=args.time_2_vec
         )
     else:
