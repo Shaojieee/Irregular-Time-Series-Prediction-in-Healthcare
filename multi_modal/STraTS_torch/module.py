@@ -101,36 +101,36 @@ class STraTS_Transformer(nn.Module):
         if self.dff==None:
             self.dff = 2*d
         
-        self.Wq = nn.Parameter(torch.empty(self.N, self.h, d, self.dk))
+        self.Wq = nn.Parameter(torch.empty(self.N, self.h, d, self.dk), requires_grad=True)
         initialise_parameters(self.Wq, 'glorot_uniform')
         
-        self.Wk = nn.Parameter(torch.empty(self.N, self.h, d, self.dk))
+        self.Wk = nn.Parameter(torch.empty(self.N, self.h, d, self.dk), requires_grad=True)
         initialise_parameters(self.Wk, 'glorot_uniform')
         
-        self.Wv = nn.Parameter(torch.empty(self.N, self.h, d, self.dk))
+        self.Wv = nn.Parameter(torch.empty(self.N, self.h, d, self.dk), requires_grad=True)
         initialise_parameters(self.Wv, 'glorot_uniform')
         
-        self.Wo = nn.Parameter(torch.empty(self.N, self.dv*self.h, d))
+        self.Wo = nn.Parameter(torch.empty(self.N, self.dv*self.h, d), requires_grad=True)
         initialise_parameters(self.Wo, 'glorot_uniform')
         
         
-        self.W1 = nn.Parameter(torch.empty(self.N, d, self.dff))
+        self.W1 = nn.Parameter(torch.empty(self.N, d, self.dff), requires_grad=True)
         initialise_parameters(self.W1, 'glorot_uniform')
         
-        self.b1 = nn.Parameter(torch.empty(self.N, self.dff))
+        self.b1 = nn.Parameter(torch.empty(self.N, self.dff), requires_grad=True)
         initialise_parameters(self.b1, 'zeros')
         
-        self.W2 = nn.Parameter(torch.empty(self.N, self.dff, d))
+        self.W2 = nn.Parameter(torch.empty(self.N, self.dff, d), requires_grad=True)
         initialise_parameters(self.W2, 'glorot_uniform')
         
-        self.b2 = nn.Parameter(torch.empty(self.N, d))
+        self.b2 = nn.Parameter(torch.empty(self.N, d), requires_grad=True)
         initialise_parameters(self.b2, 'zeros')
         
         
-        self.gamma = nn.Parameter(torch.empty(2*self.N,))
+        self.gamma = nn.Parameter(torch.empty(2*self.N,), requires_grad=True)
         initialise_parameters(self.gamma, 'ones')
         
-        self.beta = nn.Parameter(torch.empty(2*self.N,))
+        self.beta = nn.Parameter(torch.empty(2*self.N,), requires_grad=True)
         initialise_parameters(self.beta, 'zeros')
         
         
@@ -143,12 +143,16 @@ class STraTS_Transformer(nn.Module):
         # N times of transformer
         for i in range(self.N):
             mha_ops = []
+            print(f'Transformer {i}')
             # h heads for multi headed attention
             for j in range(self.h):
+                print(f'Head {j}')
                 q = torch.matmul(X, self.Wq[i,j,:,:])
                 k = torch.matmul(X, self.Wk[i,j,:,:]).permute(0,2,1)
                 v = torch.matmul(X, self.Wv[i,j,:,:])
+                print(f'X:{X.shape}, w:{self.Wq[i,j,:,:].shape}, q: {q.shape}, k: {k.shape}, v: {v.shape}')
                 A = torch.bmm(q, k)
+                print(f'A: {A.shape}')
                 A = mask * A + (1-mask) * mask_value
                 
                 def dropped_A():
@@ -156,6 +160,7 @@ class STraTS_Transformer(nn.Module):
                     return A*dp_mask + (1-dp_mask)*mask_value
                 # Dropout
                 if self.training:
+                    print('In dropout')
                     A = dropped_A()
                 else:
                     A = self.identity(A)
@@ -163,9 +168,12 @@ class STraTS_Transformer(nn.Module):
                 A = nn.functional.softmax(A, dim=-1)
                 
                 mha_ops.append(torch.bmm(A, v))
+                print(f'mha: {mha_ops[j].shape}')
             
             conc = torch.cat(mha_ops, dim=-1)
+            print(f'conc: {conc.shape}')
             proj = torch.matmul(conc, self.Wo[i,:,:])
+            print(f'proj: {proj.shape}')
             # Dropout
             if self.training:
                 proj = self.identity(self.dropout_layer(proj))
@@ -308,6 +316,123 @@ class MultiTimeAttention(nn.Module):
         return self.linears[-1](x)
 
 
+class STraTS_MultiTimeAttention(nn.Module):
+    def __init__(self, d, h=8, dk=None, dv=None, dff=None, dropout=0, epsilon=1e-07):
+        super(STraTS_MultiTimeAttention, self).__init__()
+        
+        self.h, self.dk, self.dv, self.dff, self.dropout = h, dk, dv, dff, dropout
+        self.epsilon = epsilon * epsilon
+        if self.dk==None:
+            self.dk = d // self.h
+        if self.dv==None:
+            self.dv = d//self.h
+        if self.dff==None:
+            self.dff = 2*d
+        
+        self.Wq = nn.Parameter(torch.empty(self.h, d, self.dk), requires_grad=True)
+        initialise_parameters(self.Wq, 'glorot_uniform')
+        
+        self.Wk = nn.Parameter(torch.empty(self.h, d, self.dk), requires_grad=True)
+        initialise_parameters(self.Wk, 'glorot_uniform')
+        
+        self.Wv = nn.Parameter(torch.empty(self.h, d, self.dk), requires_grad=True)
+        initialise_parameters(self.Wv, 'glorot_uniform')
+        
+        self.Wo = nn.Parameter(torch.empty(self.dv*self.h, d), requires_grad=True)
+        initialise_parameters(self.Wo, 'glorot_uniform')
+        
+        
+        self.W1 = nn.Parameter(torch.empty(d, self.dff), requires_grad=True)
+        initialise_parameters(self.W1, 'glorot_uniform')
+        
+        self.b1 = nn.Parameter(torch.empty(self.dff), requires_grad=True)
+        initialise_parameters(self.b1, 'zeros')
+        
+        self.W2 = nn.Parameter(torch.empty(self.dff, d), requires_grad=True)
+        initialise_parameters(self.W2, 'glorot_uniform')
+        
+        self.b2 = nn.Parameter(torch.empty(d), requires_grad=True)
+        initialise_parameters(self.b2, 'zeros')
+        
+        
+        self.gamma = nn.Parameter(torch.empty(2,), requires_grad=True)
+        initialise_parameters(self.gamma, 'ones')
+        
+        self.beta = nn.Parameter(torch.empty(2,), requires_grad=True)
+        initialise_parameters(self.beta, 'zeros')
+        
+        
+        self.dropout_layer = nn.Dropout(p=self.dropout)
+        self.identity = nn.Identity()
+    
+    def forward(self, query, key, value, mask, mask_value=-1e-30):
+        mask = torch.unsqueeze(mask,dim=-2)
+
+        mha_ops = []
+
+        for j in range(self.h):
+            print(f'Head {j}')
+            q = torch.matmul(query, self.Wq[j,:,:])
+            k = torch.matmul(key, self.Wk[j,:,:]).permute(0,2,1)
+            v = torch.matmul(value, self.Wv[j,:,:])
+            print(f'w:{self.Wq[j,:,:].shape}, q: {q.shape}, k: {k.shape}, v: {v.shape}')
+            A = torch.bmm(q, k)
+            print(f'A: {A.shape}')
+            A = mask * A + (1-mask) * mask_value
+            
+            def dropped_A():
+                dp_mask = (torch.rand_like(A)>=self.dropout).type(dtype=torch.float32)
+                return A*dp_mask + (1-dp_mask)*mask_value
+            # Dropout
+            if self.training:
+                print('In dropout')
+                A = dropped_A()
+            else:
+                A = self.identity(A)
+                
+            A = nn.functional.softmax(A, dim=-1)
+            
+            mha_ops.append(torch.bmm(A, v))
+            print(f'mha: {mha_ops[j].shape}')
+        
+        conc = torch.cat(mha_ops, dim=-1)
+        print(f'conc: {conc.shape}')
+        proj = torch.matmul(conc, self.Wo)
+        print(f'proj: {proj.shape}')
+        # Dropout
+        if self.training:
+            proj = self.identity(self.dropout_layer(proj))
+        else:
+            proj = self.identity(proj)
+        
+        value = proj
+        # Layer Normalisation
+        # mean = torch.mean(value, dim=-1, keepdim=True)
+        # variance = torch.mean(torch.square(value - mean), axis=-1 ,keepdims=True)
+        # std = torch.sqrt(variance + self.epsilon)
+        # value  = (value-mean)/std
+        # value = value * self.gamma[0] + self.beta[0]
+        
+        # # FFN
+        # ffn_op = torch.add(torch.matmul(nn.functional.relu(torch.add(torch.matmul(value, self.W1), self.b1)), self.W2),self.b2)
+        # # FFN Dropout
+        # if self.training:
+        #     ffn_op = self.dropout_layer(ffn_op)
+        # else:
+        #     ffn_op = self.identity(ffn_op)
+        
+        # # Add
+        # value = value + ffn_op
+        # # Layer Normalisation
+        # mean = torch.mean(value, dim=-1, keepdim=True)
+        # variance = torch.mean(torch.square(value - mean), axis=-1 ,keepdims=True)
+        # std = torch.sqrt(variance + self.epsilon)
+        # value = (value-mean)/std
+        # value = value*self.gamma[1] + self.beta[1]
+
+        return value
+
+
 class MultiHeadAttention(nn.Module):
     """Multi-headed attention.
     See "Attention Is All You Need" for more details.
@@ -323,15 +448,15 @@ class MultiHeadAttention(nn.Module):
         assert self.head_dim * num_heads == self.embed_dim, "embed_dim must be divisible by num_heads"
         self.scaling = self.head_dim ** -0.5
 
-        self.in_proj_weight = nn.Parameter(torch.Tensor(3 * embed_dim, embed_dim))
+        self.in_proj_weight = nn.Parameter(torch.Tensor(3 * embed_dim, embed_dim), requires_grad=True)
         self.register_parameter('in_proj_bias', None)
         if bias:
-            self.in_proj_bias = nn.Parameter(torch.Tensor(3 * embed_dim))
+            self.in_proj_bias = nn.Parameter(torch.Tensor(3 * embed_dim), requires_grad=True)
         self.out_proj = nn.Linear(embed_dim, embed_dim, bias=bias)
 
         if add_bias_kv:
-            self.bias_k = nn.Parameter(torch.Tensor(1, 1, embed_dim))
-            self.bias_v = nn.Parameter(torch.Tensor(1, 1, embed_dim))
+            self.bias_k = nn.Parameter(torch.Tensor(1, 1, embed_dim), requires_grad=True)
+            self.bias_v = nn.Parameter(torch.Tensor(1, 1, embed_dim), requires_grad=True)
         else:
             self.bias_k = self.bias_v = None
 

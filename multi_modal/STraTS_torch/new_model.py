@@ -3,7 +3,7 @@ import torch
 import numpy as np
 import math
 
-from module import CVE, TVE, Time2Vec, MultiTimeAttention, TransformerEncoder, Attention, STraTS_Transformer
+from module import CVE, TVE, Time2Vec, MultiTimeAttention, TransformerEncoder, Attention, STraTS_Transformer, STraTS_MultiTimeAttention
 
 
 class custom_STraTS(nn.Module):
@@ -40,13 +40,13 @@ class custom_STraTS(nn.Module):
         
         self.varis_stack = nn.Embedding(V+1, d)
 
-        self.mTAND = MultiTimeAttention(
-            input_dim=d, 
-            hid_dim=d,
-            output_dim=d,
-            num_heads=he,
-            dropout=dropout,
-        )
+        # self.mTAND = MultiTimeAttention(
+        #     input_dim=d, 
+        #     hid_dim=d,
+        #     output_dim=d,
+        #     num_heads=he,
+        #     dropout=dropout,
+        # )
 
         # self.CTE = TransformerEncoder(
         #     embed_dim=d, 
@@ -60,6 +60,16 @@ class custom_STraTS(nn.Module):
         #     q_seq_len=None, 
         #     kv_seq_len=None
         # )
+
+        self.mTAND = STraTS_MultiTimeAttention(
+            d=d,
+            h=he,
+            dk=None, 
+            dv=None, 
+            dff=None, 
+            dropout=dropout, 
+            epsilon=1e-07
+        )
 
         self.CTE = STraTS_Transformer(
             d=d, 
