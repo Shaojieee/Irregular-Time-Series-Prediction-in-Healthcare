@@ -148,9 +148,9 @@ class STraTS(nn.Module):
         ts_varis_emb = self.varis_stack(varis)
         ts_values_emb = self.values_stack(values)
         ts_times_emb = self.times_stack(times)
-        print(f'ts_varis_emb: {ts_varis_emb.shape}')
-        print(f'ts_values_emb: {ts_values_emb.shape}')
-        print(f'ts_times_emb: {ts_times_emb.shape}')
+        # print(f'ts_varis_emb: {ts_varis_emb.shape}')
+        # print(f'ts_values_emb: {ts_values_emb.shape}')
+        # print(f'ts_times_emb: {ts_times_emb.shape}')
 
 
         if self.with_text:
@@ -173,28 +173,28 @@ class STraTS(nn.Module):
     
         comb_emb = varis_emb + values_emb + times_emb
 
-        print(f'comb_emb: {comb_emb.shape}')
+        # print(f'comb_emb: {comb_emb.shape}')
         if self.with_text:
             varis = torch.cat([varis, text_varis], dim=-1)
         mask = torch.clamp(varis, 0,1)
         # print(f'Mask: {mask.shape}')
         cont_emb = self.cont_stack(comb_emb, mask)
-        print(f'cont_emb: {cont_emb.shape}')
+        # print(f'cont_emb: {cont_emb.shape}')
         
         # Calculating the weights for cont_emb
         attn_weights = self.attn_stack(cont_emb, mask)
-        print(f'attn_weights: {attn_weights.shape}')
+        # print(f'attn_weights: {attn_weights.shape}')
         
         # Getting the weighted avg from the embeddings
         fused_emb = torch.sum(cont_emb * attn_weights, dim=-2)
-        print(f'fused_emb: {fused_emb.shape}')
+        # print(f'fused_emb: {fused_emb.shape}')
         
         # Combining Time Series Embedding with Demographic Embeddings
         if self.D>0:
             conc = torch.cat([fused_emb, demo_enc], dim=-1)
         else:
             conc = fused_emb
-        print(f'conc: {conc.shape}')
+        # print(f'conc: {conc.shape}')
         
         # Generating Output
         if self.return_embeddings:

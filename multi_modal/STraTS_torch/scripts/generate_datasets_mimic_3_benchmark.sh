@@ -12,4 +12,6 @@ source activate fyp_multi_modal
 
 cd /home/FYP/szhong005/fyp/multi_modal/STraTS_torch
 
-python generate_datasets_mimic_iii_benchmark.py
+python generate_datasets_mimic_iii_benchmark.py \
+        --max_len 800 \
+        --output_dir "./mortality_mimic_3_benchmark_800"

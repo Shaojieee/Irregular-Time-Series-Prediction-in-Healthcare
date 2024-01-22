@@ -3,7 +3,9 @@
 #SBATCH --qos=normal
 #SBATCH --gres=gpu:1
 #SBATCH --nodes=1
-#SBATCH --mem=64G
+#SBATCH --mem=8G
+#SBATCH --cpus-per-task=2
+#SBATCH --ntasks-per-node=2
 #SBATCH --job-name=fyp_STraTS_torch_mortality
 #SBATCH --output=output/output_%x_%j.out 
 #SBATCH --error=error/error_%x_%j.err
@@ -35,26 +37,28 @@ cd /home/FYP/szhong005/fyp/multi_modal/STraTS_torch
 #                     --num_epochs 50 \
 
 # Original STraTS
-# python -W ignore train.py  \
-#                     --fp16 \
-#                     --train_job "mortality_model" \
-#                     --output_dir "./logs/strats_weighted_orig_dataset" \
-#                     --data_dir "./mortality_datasets" \
-#                     --weighted_class_weights \
-#                     --d 64 \
-#                     --N 4 \
-#                     --he 4 \
-#                     --dropout 0.2 \
-#                     --ts_learning_rate 0.0002 \
-#                     --patience 10 \
-#                     --early_stopper_min_delta 0 \
-#                     --early_stopper_mode "min" \
-#                     --early_stopper_restore_best_weights \
-#                     --train_batch_size 128 \
-#                     --eval_batch_size 128 \
-#                     --lds 100 \
-#                     --repeats 5 \
-#                     --num_epochs 100 \
+python -W ignore train.py  \
+                    --fp16 \
+                    --train_job "mortality_model" \
+                    --output_dir "./logs/strats_orig_dataset_sum_prroc" \
+                    --data_dir "./mortality_datasets" \
+                    --with_demographics \
+                    --d 32 \
+                    --N 2 \
+                    --he 4 \
+                    --dropout 0.2 \
+                    --ts_learning_rate 0.0005 \
+                    --gradient_accumulation_steps 4 \
+                    --patience 10 \
+                    --early_stopper_min_delta 0 \
+                    --early_stopper_mode "max" \
+                    --early_stopper_metric "SUM_PR_AUC_ROC_AUC" \
+                    --early_stopper_restore_best_weights \
+                    --train_batch_size 8 \
+                    --eval_batch_size 8 \
+                    --lds 50 \
+                    --repeats 3 \
+                    --num_epochs 100 \
 
 
 # # Numerical with new value encoding
@@ -128,28 +132,31 @@ cd /home/FYP/szhong005/fyp/multi_modal/STraTS_torch
 #                     --repeats 3 \
 #                     --num_epochs 100 \
 
-python -W ignore train.py  \
-                    --fp16 \
-                    --train_job "mortality_model" \
-                    --output_dir "./logs/strats_mtand_time2vec_32_1_8" \
-                    --data_dir "./mortality_mimic_3_benchmark" \
-                    --time_2_vec \
-                    --custom_strats \
-                    --d 32 \
-                    --N 1 \
-                    --he 8 \
-                    --dropout 0.2 \
-                    --ts_learning_rate 0.0002 \
-                    --patience 10 \
-                    --early_stopper_min_delta 0 \
-                    --early_stopper_mode "min" \
-                    --early_stopper_restore_best_weights \
-                    --early_stopper_metric "F1" \
-                    --train_batch_size 16 \
-                    --eval_batch_size 16 \
-                    --lds 100 \
-                    --repeats 3 \
-                    --num_epochs 100 \
+# python -W ignore train.py  \
+#                     --fp16 \
+#                     --train_job "mortality_model" \
+#                     --output_dir "./logs/strats_mtand_32_2_8_part_orig_dataset_grad_64" \
+#                     --data_dir "./mortality_datasets" \
+#                     --custom_strats \
+#                     --with_demographics \
+#                     --d 32 \
+#                     --N 2 \
+#                     --he 8 \
+#                     --dropout 0.2 \
+#                     --ts_learning_rate 0.0002 \
+#                     --gradient_accumulation_steps 8 \
+#                     --patience 10 \
+#                     --early_stopper_min_delta 0 \
+#                     --early_stopper_mode "min" \
+#                     --early_stopper_metric "LOSS" \
+#                     --early_stopper_restore_best_weights \
+#                     --train_batch_size 8 \
+#                     --eval_batch_size 8 \
+#                     --lds 50 \
+#                     --repeats 3 \
+#                     --num_epochs 100 \
+
+
 
 
 

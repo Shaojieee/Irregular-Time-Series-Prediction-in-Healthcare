@@ -37,6 +37,7 @@ def parse_args():
     parser.add_argument('--normalise_time', action='store_true')
     parser.add_argument('--time_2_vec', action='store_true')
     parser.add_argument('--custom_strats', action='store_true')
+    parser.add_argument('--with_demographics', action='store_true')
     parser.add_argument(
         "--text_padding",
         action='store_true'
@@ -198,7 +199,7 @@ def mortality_results(y_true, y_pred, class_weights={1:1, 0:1},**kwargs):
     f1 = f1_score(y_true, (y_pred>0.5))
 
 
-    return {'PR_AUC': pr_auc, 'ROC_AUC': roc_auc, 'MIN_RP': min_rp, 'LOSS': bce_loss, 'F1': f1}
+    return {'PR_AUC': pr_auc, 'ROC_AUC': roc_auc, 'MIN_RP': min_rp, 'LOSS': bce_loss, 'F1': f1, 'SUM_PR_AUC_ROC_AUC': pr_auc+roc_auc}
 
 
 class EvaluationCallback():

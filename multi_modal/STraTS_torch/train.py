@@ -33,7 +33,7 @@ def main():
         args.mixed_precision="fp16"
     else:
         args.mixed_precision="no"
-    accelerator = Accelerator(fp16=args.fp16, mixed_precision=args.mixed_precision,cpu=args.cpu, gradient_accumulation_steps=args.gradient_accumulation_steps)
+    accelerator = Accelerator(mixed_precision=args.mixed_precision,cpu=args.cpu, gradient_accumulation_steps=args.gradient_accumulation_steps)
 
     device = accelerator.device
     print(f'Device:{device}')
@@ -237,7 +237,7 @@ def train_mortality_model(args, accelerator):
                 bert = accelerator.prepare(bert)
                 
                 model = orig_STraTS(
-                    D=D, # No. of static variables
+                    D=D if args.with_demographics else 0, # No. of static variables
                     V=V+1, # No. of variables / features
                     d=args.d, # Input size of attention layer
                     N=args.N, # No. of Encoder blocks
@@ -255,7 +255,7 @@ def train_mortality_model(args, accelerator):
             elif args.custom_strats:
                 model = custom_STraTS(
                     # No. of Demographics features
-                    D=D,
+                    D=D if args.with_demographics else 0,
                     # No. of Variable Embedding Size
                     V=V,
                     d=args.d,
@@ -267,7 +267,7 @@ def train_mortality_model(args, accelerator):
             else:
                 model = orig_STraTS(
                     # No. of Demographics features
-                    D=D,
+                    D=D if args.with_demographics else 0,
                     # No. of Variable Embedding Size
                     V=V,
                     d=args.d,
