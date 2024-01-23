@@ -136,7 +136,7 @@ def train_forecasting_model(args, accelerator):
             model=model,
             epoch=epoch,
             V=V,
-            with_text=args.with_text
+            with_text=False
         )
 
         # Early Stopper check
@@ -166,29 +166,13 @@ def train_forecasting_model(args, accelerator):
 
 def train_mortality_model(args, accelerator):
 
-    if args.with_text:
-        _, _, tokenizer = load_Bert(
-            text_encoder_model = args.text_encoder_model
-        )
-    else:
-        tokenizer = None
-        dataloader_collate_fn = None
-    
-    if args.with_text and args.new_value_encoding:
-        dataloader_collate_fn = lambda x: combine_values_varis_with_text(pad_text_data(x), normalise_varis=args.normalise_varis)
-    elif args.with_text:
-        dataloader_collate_fn = pad_text_data
-    elif args.new_value_encoding:
-        dataloader_collate_fn = lambda x: combine_values_varis(x, normalise_varis=args.normalise_varis)
-    elif args.normalise_time:
-        dataloader_collate_fn = lambda x: normalise_time(x, max_time=24)
-    else:
-        dataloader_collate_fn = None
+
+    dataloader_collate_fn = None
 
     train_dataset, val_dataset, test_dataset, V, D = load_mortality_dataset(
         args.data_dir, 
-        with_text=args.with_text, 
-        tokenizer=tokenizer,
+        with_text=False, 
+        tokenizer=None,
         text_padding=args.text_padding, 
         text_max_len=args.text_max_length, 
         text_model=args.text_encoder_model, 
@@ -226,31 +210,7 @@ def train_mortality_model(args, accelerator):
             train_dataloader = DataLoader(train_subset, batch_size=args.train_batch_size, collate_fn=dataloader_collate_fn)
             val_dataloader = DataLoader(val_subset, batch_size=args.eval_batch_size, collate_fn=dataloader_collate_fn)
 
-            # TODO: with text model
-            if args.with_text:
-                bert, bert_config, tokenizer = load_Bert(
-                    text_encoder_model = args.text_encoder_model
-                )
-
-                bert = accelerator.prepare(bert)
-                
-                model = orig_STraTS(
-                    D=D if args.with_demographics else 0, # No. of static variables
-                    V=V+1, # No. of variables / features
-                    d=args.d, # Input size of attention layer
-                    N=args.N, # No. of Encoder blocks
-                    he=args.he, # No. of heads in multi headed encoder blocks
-                    dropout=args.dropout,
-                    with_text=True,
-                    text_encoder=bert,
-                    text_encoder_name=args.text_encoder_model,
-                    text_linear_embed_dim=args.d*2,
-                    forecast=False, 
-                    return_embeddings=False,
-                    new_value_encoding=args.new_value_encoding,
-                    time_2_vec=args.time_2_vec
-                )
-            elif args.custom_strats:
+            if args.custom_strats:
                 model = custom_STraTS(
                     # No. of Demographics features
                     D=D if args.with_demographics else 0,
@@ -291,14 +251,6 @@ def train_mortality_model(args, accelerator):
             
 
             optimiser = torch.optim.Adam(model.parameters(), lr=args.ts_learning_rate)
-            if args.with_text:
-                # optimizer= torch.optim.Adam([
-                #     {'params': [p for n, p in model.named_parameters() if 'text' not in n]},
-                #     {'params':[p for n, p in model.named_parameters() if 'text' in n], 'lr': args.text_learning_rate}
-                # ], lr=args.ts_learning_rate)
-
-                for param in model.text_encoder.parameters():
-                        param.requires_grad = False
             
             if print_model:
                 print(model)
@@ -310,10 +262,7 @@ def train_mortality_model(args, accelerator):
 
 
             if args.weighted_class_weights:
-                if args.with_text:
-                    train_classes = [Y for X_demos, X_times, X_values, X_varis, Y, X_text_tokens, X_text_attention_mask, X_text_times, X_text_time_mask, X_text_feature_varis in train_dataset]
-                else:
-                    train_classes = [int(Y.item()) for X_demos, X_times, X_values, X_varis, Y in train_dataset]
+                train_classes = [int(Y.item()) for X_demos, X_times, X_values, X_varis, Y in train_dataset]
 
                 class_weights = Counter(train_classes)
 
@@ -356,14 +305,8 @@ def train_mortality_model(args, accelerator):
                 model.train()
                 total_loss = 0.0
                 for step, batch in tqdm(enumerate(train_dataloader)):
-                    if args.with_text:
-                        X_demos, X_times, X_values, X_varis, Y, X_text_tokens, X_text_attention_mask, X_text_times, X_text_time_mask, X_text_feature_varis = batch
-                        Y_pred = model(X_demos, X_times, X_values, X_varis, X_text_tokens, X_text_attention_mask, X_text_times, X_text_feature_varis)
-                    else:
-                        X_demos, X_times, X_values, X_varis, Y = batch
-                        Y_pred = model(X_demos, X_times, X_values, X_varis)
-                    
-
+                    X_demos, X_times, X_values, X_varis, Y = batch
+                    Y_pred = model(X_demos, X_times, X_values, X_varis)
                     loss = loss_fn(Y, Y_pred)
                     loss.backward()
                     optimiser.step()
@@ -377,7 +320,7 @@ def train_mortality_model(args, accelerator):
                 results = val_results.on_epoch_end(
                     model=model,
                     epoch=epoch,
-                    with_text=args.with_text,
+                    with_text=False,
                     class_weights=class_weights
                 )
 
@@ -396,7 +339,7 @@ def train_mortality_model(args, accelerator):
             test_results.on_epoch_end(
                 model=model,
                 epoch=epoch,
-                with_text=args.with_text,
+                with_text=False,
                 class_weights=class_weights
             )
 
@@ -432,18 +375,14 @@ def train_mortality_model(args, accelerator):
 
 def tune_mortality_model(args, accelerator):
     
-    if args.with_text:
-        _, _, tokenizer = load_Bert(
-            text_encoder_model = args.text_encoder_model
-        )
-    else:
-        tokenizer = None
-        dataloader_collate_fn = None
+    
+    tokenizer = None
+    dataloader_collate_fn = None
     
 
     train_dataset, val_dataset, test_dataset, V, D = load_mortality_dataset(
         args.data_dir, 
-        with_text=args.with_text, 
+        with_text=False, 
         tokenizer=tokenizer,
         text_padding=args.text_padding, 
         text_max_len=args.text_max_length, 

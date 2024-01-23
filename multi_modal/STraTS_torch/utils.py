@@ -31,23 +31,12 @@ def parse_args():
     parser.add_argument(
         "--model_weights", type=str, default=None, help="forecasting_model or mortality_model"
     )
-    parser.add_argument('--with_text', action='store_true')
     parser.add_argument('--new_value_encoding', action='store_true')
     parser.add_argument('--normalise_varis', action='store_true')
     parser.add_argument('--normalise_time', action='store_true')
     parser.add_argument('--time_2_vec', action='store_true')
     parser.add_argument('--custom_strats', action='store_true')
     parser.add_argument('--with_demographics', action='store_true')
-    parser.add_argument(
-        "--text_padding",
-        action='store_true'
-    )
-    parser.add_argument(
-        "--text_max_length",
-        type=int,
-        default=1024,
-        help="Maximum total input sequence length after tokenization. Sequences longer than this will be truncated,sequences shorter will be padded if `--text_padding` is passed.",
-    )
     parser.add_argument(
         "--d",
         type=int,
@@ -73,34 +62,16 @@ def parse_args():
         help="Learning Rate",
     )
     parser.add_argument(
-        "--text_num_notes",
-        type=int,
-        default=5,
-        help="Maximum no. of notes to use",
-    )
-    parser.add_argument(
         "--period_length",
         type=int,
         default=48,
         help="Max hours of data to use",
     )
     parser.add_argument(
-        "--text_encoder_model",
-        type=str,
-        default='bioLongformer',
-        help="Text Encoder Model to use",
-    )
-    parser.add_argument(
         "--ts_learning_rate",
         type=float,
         default=0.0005,
         help="Time Series Learning Rate",
-    )
-    parser.add_argument(
-        "--text_learning_rate",
-        type=float,
-        default=0.00002,
-        help="Text Model Learning Rate",
     )
     parser.add_argument('--weighted_class_weights', action='store_true')
     parser.add_argument(

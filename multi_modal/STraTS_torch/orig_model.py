@@ -141,7 +141,7 @@ class STraTS(nn.Module):
         
         # print(f'Total Parameters: {total_parameters}')
     
-    def forward(self, demo, times, values, varis, text_values=None, text_attention_mask=None, text_times=None, text_varis=None):
+    def forward(self, demo, times, values, varis):
         
         if self.D>0:
             demo_enc = self.demo_stack(demo)
@@ -155,29 +155,12 @@ class STraTS(nn.Module):
         # print(f'ts_times_emb: {ts_times_emb.shape}')
 
 
-        if self.with_text:
-            text_varis_emb = self.varis_stack(text_varis)
-            # print(f'text_varis_emb: {text_varis_emb.shape}')
-            text_values_emb = self.text_encoder(text_values, text_attention_mask)
-            # print(f'text_values_emb: {text_values_emb.shape}')
-            text_values_emb = self.text_stack(text_values_emb)
-            # print(f'text_values_emb: {text_values_emb.shape}')
-            text_times_emb = self.times_stack(text_times)
-            # print(f'text_times_emb: {text_times_emb.shape}')
-
-
-            varis_emb = torch.cat([ts_varis_emb, text_varis_emb], dim=1)
-            values_emb = torch.cat([ts_values_emb, text_values_emb], dim=1)
-            times_emb = torch.cat([ts_times_emb, text_times_emb], dim=1)
-        else:
-            varis_emb, values_emb, times_emb = ts_varis_emb, ts_values_emb, ts_times_emb
+        varis_emb, values_emb, times_emb = ts_varis_emb, ts_values_emb, ts_times_emb
 
     
         comb_emb = varis_emb + values_emb + times_emb
 
         # print(f'comb_emb: {comb_emb.shape}')
-        if self.with_text:
-            varis = torch.cat([varis, text_varis], dim=-1)
         mask = torch.clamp(varis, 0,1)
         # print(f'Mask: {mask.shape}')
         cont_emb = self.cont_stack(comb_emb, mask)
