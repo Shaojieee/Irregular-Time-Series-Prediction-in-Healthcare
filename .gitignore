@@ -7,8 +7,8 @@ physionet.org
 mimic_iii*
 
 mortality_mimic_3_benchmark*
-forecast_datasets
-mortality_datasets
+forecast_datasets*
+mortality_datasets*
 logs*
 Data
 run
