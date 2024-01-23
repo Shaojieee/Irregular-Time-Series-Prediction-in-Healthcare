@@ -125,11 +125,12 @@ class custom_STraTS(nn.Module):
         # print(f'mask: {mask.shape}')
 
         query_key_emb = ts_varis_emb + ts_times_emb
+        value_emb = ts_values_emb + query_key_emb
 
         time_atten_values_emb = self.mTAND(
             query=query_key_emb,
             key=query_key_emb,
-            value=ts_values_emb,
+            value=value_emb,
             mask=mask
         )
 
@@ -138,7 +139,8 @@ class custom_STraTS(nn.Module):
         # time_atten = time_atten.transpose(0,1)
         # print(f'time_atten: {time_atten.shape}')
 
-        comb_emb = time_atten_values_emb + ts_varis_emb + ts_times_emb
+        # comb_emb = time_atten_values_emb + ts_varis_emb + ts_times_emb
+        comb_emb = time_atten_values_emb
 
         CTE_emb = self.CTE(comb_emb, mask)
         # print(f'CTE_emb: {CTE_emb.shape}')

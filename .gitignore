@@ -9,7 +9,7 @@ mimic_iii*
 mortality_mimic_3_benchmark*
 forecast_datasets
 mortality_datasets
-logs
+logs*
 Data
 run
 tensorboard_dir

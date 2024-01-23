@@ -38,122 +38,50 @@ cd /home/FYP/szhong005/fyp/multi_modal/STraTS_torch
 
 # Original STraTS
 python -W ignore train.py  \
-                    --fp16 \
                     --train_job "mortality_model" \
-                    --output_dir "./logs/strats_orig_dataset_sum_prroc" \
+                    --output_dir "./logs_new/strats" \
                     --data_dir "./mortality_datasets" \
                     --with_demographics \
+                    --weighted_class_weights \
                     --d 32 \
                     --N 2 \
                     --he 4 \
                     --dropout 0.2 \
                     --ts_learning_rate 0.0005 \
-                    --gradient_accumulation_steps 4 \
                     --patience 10 \
                     --early_stopper_min_delta 0 \
-                    --early_stopper_mode "max" \
-                    --early_stopper_metric "SUM_PR_AUC_ROC_AUC" \
+                    --early_stopper_mode "min" \
+                    --early_stopper_metric "LOSS" \
                     --early_stopper_restore_best_weights \
-                    --train_batch_size 8 \
-                    --eval_batch_size 8 \
+                    --train_batch_size 32 \
+                    --eval_batch_size 32 \
                     --lds 50 \
-                    --repeats 3 \
+                    --repeats 5 \
                     --num_epochs 100 \
-
-
-# # Numerical with new value encoding
-# python -W ignore train.py  \
-#                     --fp16 \
-#                     --train_job "mortality_model" \
-#                     --output_dir "./logs/strats_tuned_new_encoding_orig_dataset" \
-#                     --data_dir "./mortality_datasets" \
-#                     --new_value_encoding \
-#                     --d 64 \
-#                     --N 4 \
-#                     --he 4 \
-#                     --dropout 0.2 \
-#                     --ts_learning_rate 0.0002 \
-#                     --patience 10 \
-#                     --early_stopper_min_delta 0 \
-#                     --early_stopper_mode "min" \
-#                     --early_stopper_restore_best_weights \
-#                     --train_batch_size 128 \
-#                     --eval_batch_size 128 \
-#                     --lds 100 \
-#                     --repeats 1 \
-#                     --num_epochs 100 \
-
-
-
-# Numerical with new value encoding & normalise varis
-# python -W ignore train.py  \
-#                     --fp16 \
-#                     --train_job "mortality_model" \
-#                     --output_dir "./logs/strats_new_encoding_normalise_varis_orig_dataset" \
-#                     --data_dir "./mortality_datasets" \
-#                     --new_value_encoding \
-#                     --normalise_varis \
-#                     --d 64 \
-#                     --N 4 \
-#                     --he 4 \
-#                     --dropout 0.2 \
-#                     --ts_learning_rate 0.0002 \
-#                     --patience 10 \
-#                     --early_stopper_min_delta 0 \
-#                     --early_stopper_mode "min" \
-#                     --early_stopper_restore_best_weights \
-#                     --train_batch_size 128 \
-#                     --eval_batch_size 128 \
-#                     --lds 100 \
-#                     --repeats 5 \
-#                     --num_epochs 100 \
 
 
 # mTAND STraTS
 # python -W ignore train.py  \
-#                     --fp16 \
 #                     --train_job "mortality_model" \
-#                     --output_dir "./logs/strats_mtand_weighted_32_2_4_orig_dataset" \
-#                     --data_dir "./mortality_datasets" \
-#                     --normalise_time \
-#                     --custom_strats \
-#                     --d 32 \
-#                     --N 2 \
-#                     --he 4 \
-#                     --dropout 0.2 \
-#                     --ts_learning_rate 0.0002 \
-#                     --patience 10 \
-#                     --early_stopper_min_delta 0 \
-#                     --early_stopper_mode "min" \
-#                     --early_stopper_restore_best_weights \
-#                     --train_batch_size 16 \
-#                     --eval_batch_size 16 \
-#                     --lds 100 \
-#                     --repeats 3 \
-#                     --num_epochs 100 \
-
-# python -W ignore train.py  \
-#                     --fp16 \
-#                     --train_job "mortality_model" \
-#                     --output_dir "./logs/strats_mtand_32_2_8_part_orig_dataset_grad_64" \
+#                     --output_dir "./logs_new/mtand_ft_ft_ftv_32_2_4" \
 #                     --data_dir "./mortality_datasets" \
 #                     --custom_strats \
 #                     --with_demographics \
 #                     --d 32 \
 #                     --N 2 \
-#                     --he 8 \
+#                     --he 4 \
 #                     --dropout 0.2 \
-#                     --ts_learning_rate 0.0002 \
-#                     --gradient_accumulation_steps 8 \
+#                     --ts_learning_rate 0.0005 \
+#                     --gradient_accumulation_steps 1 \
 #                     --patience 10 \
 #                     --early_stopper_min_delta 0 \
-#                     --early_stopper_mode "min" \
-#                     --early_stopper_metric "LOSS" \
+#                     --early_stopper_mode "max" \
+#                     --early_stopper_metric "SUM_PR_AUC_ROC_AUC" \
 #                     --early_stopper_restore_best_weights \
-#                     --train_batch_size 8 \
-#                     --eval_batch_size 8 \
+#                     --train_batch_size 32 \
+#                     --eval_batch_size 32 \
 #                     --lds 50 \
-#                     --repeats 3 \
+#                     --repeats 5 \
 #                     --num_epochs 100 \
 
 

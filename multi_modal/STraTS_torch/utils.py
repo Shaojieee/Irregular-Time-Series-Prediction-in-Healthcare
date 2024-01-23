@@ -116,12 +116,6 @@ def parse_args():
         help="Learning Rate",
     )
     parser.add_argument(
-        "--gradient_accumulation_steps",
-        type=int,
-        default=1,
-        help="Accelerator gradient accumumlation steps",
-    )
-    parser.add_argument(
         "--early_stopper_mode", type=str, default='min', help="forecasting_model or mortality_model"
     )
     parser.add_argument('--early_stopper_restore_best_weights', action='store_true')

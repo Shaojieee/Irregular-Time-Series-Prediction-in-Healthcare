@@ -123,13 +123,15 @@ class STraTS(nn.Module):
             else:
                 if self.D>0:
                     self.output_stack = nn.Sequential(
-                        nn.Linear(in_features=d+d, out_features=1),
+                        nn.Linear(in_features=d+d, out_features=V),
+                        nn.Linear(in_features=V, out_features=1),
                         nn.Sigmoid(),
                         nn.Flatten(start_dim=0)
                     )
                 else:
                     self.output_stack = nn.Sequential(
-                        nn.Linear(in_features=d, out_features=1),
+                        nn.Linear(in_features=d, out_features=V),
+                        nn.Linear(in_features=V, out_features=1),
                         nn.Sigmoid(),
                         nn.Flatten(start_dim=0)
                     )
