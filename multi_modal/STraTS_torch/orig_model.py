@@ -1,7 +1,7 @@
 import torch.nn as nn
 import torch
 import numpy as np
-from module import CVE, TVE, Time2Vec, Attention, STraTS_Transformer
+from module import CVE Attention, STraTS_Transformer
 
 
 
@@ -38,42 +38,21 @@ class STraTS(nn.Module):
         # print(f'varis_stack: {num_params}')
         # total_parameters += num_params
 
-        if self.with_text:
-            self.text_encoder = BertForRepresentation(text_encoder, text_encoder_name)
-            # num_params = sum(p.numel() for p in self.text_encoder.parameters())
-            # print(f'text_encoder: {num_params}')
-            # total_parameters += num_params
-            self.text_stack = TVE(text_linear_embed_dim, d)
-            # num_params = sum(p.numel() for p in self.text_linear_stack.parameters())
-            # print(f'text_linear_stack: {num_params}')
-            # total_parameters += num_params
 
         # FFN to 'encode' the continuous values. Continuous Value Embedding (CVE)
-        if new_value_encoding:
-            self.values_stack = TVE(
-                input_dim=2,
-                hid_dim=cve_units, 
-                output_dim=d
-            )
-        else:
-            self.values_stack = CVE(
-                hid_dim=cve_units, 
-                output_dim=d
-            )  
+        self.values_stack = CVE(
+            hid_dim=cve_units, 
+            output_dim=d
+        )  
         # num_params = sum(p.numel() for p in self.values_stack.parameters())
         # print(f'values_stack: {num_params}')
         # total_parameters += num_params
         
         # FFN to 'encode' the continuous values. Continuous Value Embedding (CVE)
-        if time_2_vec:
-            self.times_stack = Time2Vec(
-                output_dim=d
-            )
-        else:
-            self.times_stack = CVE(
-                hid_dim=cve_units, 
-                output_dim=d
-            )        
+        self.times_stack = CVE(
+            hid_dim=cve_units, 
+            output_dim=d
+        )        
         # num_params = sum(p.numel() for p in self.times_stack.parameters())
         # print(f'times_stack: {num_params}')
         # total_parameters += num_params
@@ -117,24 +96,24 @@ class STraTS(nn.Module):
         # total_parameters += num_params
         
         # Output Layer Inputs: Attention Weight * Time Series Embedding + Demographic Encoding = batch_size * (+d)
-        if not self.return_embeddings:
-            if forecast:
-                self.output_stack = nn.Linear(in_features=d+d, out_features=V)
+        
+        if forecast:
+            self.output_stack = nn.Linear(in_features=d+d, out_features=V)
+        else:
+            if self.D>0:
+                self.output_stack = nn.Sequential(
+                    nn.Linear(in_features=d+d, out_features=V),
+                    nn.Linear(in_features=V, out_features=1),
+                    nn.Sigmoid(),
+                    nn.Flatten(start_dim=0)
+                )
             else:
-                if self.D>0:
-                    self.output_stack = nn.Sequential(
-                        nn.Linear(in_features=d+d, out_features=V),
-                        nn.Linear(in_features=V, out_features=1),
-                        nn.Sigmoid(),
-                        nn.Flatten(start_dim=0)
-                    )
-                else:
-                    self.output_stack = nn.Sequential(
-                        nn.Linear(in_features=d, out_features=V),
-                        nn.Linear(in_features=V, out_features=1),
-                        nn.Sigmoid(),
-                        nn.Flatten(start_dim=0)
-                    )
+                self.output_stack = nn.Sequential(
+                    nn.Linear(in_features=d, out_features=V),
+                    nn.Linear(in_features=V, out_features=1),
+                    nn.Sigmoid(),
+                    nn.Flatten(start_dim=0)
+                )
         # num_params = sum(p.numel() for p in self.output_stack.parameters())
         # print(f'output_stack: {num_params}')
         # total_parameters += num_params
@@ -182,10 +161,7 @@ class STraTS(nn.Module):
         # print(f'conc: {conc.shape}')
         
         # Generating Output
-        if self.return_embeddings:
-            output = conc 
-        else:
-            output = self.output_stack(conc)
+        output = self.output_stack(conc)
         # print(f'output: {output.shape}')
         
         return output

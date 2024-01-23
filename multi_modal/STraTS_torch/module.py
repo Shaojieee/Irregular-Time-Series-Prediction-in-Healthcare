@@ -107,7 +107,7 @@ class STraTS_Transformer(nn.Module):
         self.Wk = nn.Parameter(torch.empty(self.N, self.h, d, self.dk))
         initialise_parameters(self.Wk, 'glorot_uniform')
         
-        self.Wv = nn.Parameter(torch.empty(self.N, self.h, d, self.dk))
+        self.Wv = nn.Parameter(torch.empty(self.N, self.h, d, self.dv))
         initialise_parameters(self.Wv, 'glorot_uniform')
         
         self.Wo = nn.Parameter(torch.empty(self.N, self.dv*self.h, d))
@@ -228,7 +228,7 @@ class STraTS_MultiTimeAttention(nn.Module):
         self.Wk = nn.Parameter(torch.empty(self.h, d, self.dk))
         initialise_parameters(self.Wk, 'glorot_uniform')
         
-        self.Wv = nn.Parameter(torch.empty(self.h, d, self.dk))
+        self.Wv = nn.Parameter(torch.empty(self.h, d, self.dv))
         initialise_parameters(self.Wv, 'glorot_uniform')
         
         self.Wo = nn.Parameter(torch.empty(self.dv*self.h, d))
