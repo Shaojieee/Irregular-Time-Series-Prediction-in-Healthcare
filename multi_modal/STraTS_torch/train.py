@@ -92,7 +92,7 @@ def train_forecasting_model(args, accelerator):
         )
 
 
-    optimiser = torch.optim.Adam(model.parameters(), lr=args.ts_learning_rate)
+    optimiser = torch.optim.Adam(model.parameters(), lr=args.ts_learning_rate,  eps=1e-07)
 
     loss_fn = forecast_loss
     model, optimiser, train_dataloader,val_dataloader = accelerator.prepare(model, optimiser, train_dataloader, val_dataloader)
@@ -173,11 +173,6 @@ def train_mortality_model(args, accelerator):
         args.data_dir, 
         with_text=False, 
         tokenizer=None,
-        text_padding=args.text_padding, 
-        text_max_len=args.text_max_length, 
-        text_model=args.text_encoder_model, 
-        period_length=args.period_length, 
-        num_notes=args.text_num_notes,
         debug=False
     )
 
@@ -193,18 +188,16 @@ def train_mortality_model(args, accelerator):
         if time_check(args.start_time):
             break
         # Generating list of start indexes for different repeats
-        train_start = [int(i) for i in np.linspace(0, len(train_dataset)-int(ld*len(train_dataset)/100), args.repeats)]
-        val_start = [int(i) for i in np.linspace(0, len(val_dataset)-int(ld*len(val_dataset)/100), args.repeats)]
         
         for i in range(args.repeats):
             print(f'Training with ld: {ld} Repeat {i+1}')
             if time_check(args.start_time):
                 break
             # Generating list of indexes
-            cur_train_ind = np.arange(train_start[i], train_start[i]+int(ld*len(train_dataset)/100))
+            cur_train_ind = np.random.choice(len(train_dataset), size=int(ld*len(train_dataset)), replace=False)
             train_subset = Subset(train_dataset, cur_train_ind)
 
-            cur_val_ind = np.arange(val_start[i], val_start[i]+int(ld*len(val_dataset)/100))
+            cur_val_ind = np.random.choice(len(val_dataset), size=int(ld*len(val_dataset)), replace=False)
             val_subset = Subset(val_dataset, cur_val_ind)
 
             train_dataloader = DataLoader(train_subset, batch_size=args.train_batch_size, collate_fn=dataloader_collate_fn)
@@ -250,7 +243,7 @@ def train_mortality_model(args, accelerator):
             
             
 
-            optimiser = torch.optim.Adam(model.parameters(), lr=args.ts_learning_rate)
+            optimiser = torch.optim.Adam(model.parameters(), lr=args.ts_learning_rate, eps=1e-07)
             
             if print_model:
                 print(model)
@@ -258,7 +251,6 @@ def train_mortality_model(args, accelerator):
                 total_trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad==True)
                 print(f'Total number of parameters: {total_params}, Total trainable parameters: {total_trainable_params}')
                 print_model = False
-
 
 
             if args.weighted_class_weights:

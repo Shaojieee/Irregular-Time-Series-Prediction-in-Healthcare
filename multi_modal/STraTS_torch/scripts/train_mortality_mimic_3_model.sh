@@ -36,11 +36,13 @@ cd /home/FYP/szhong005/fyp/multi_modal/STraTS_torch
 #                     --repeats 1 \
 #                     --num_epochs 50 \
 
-# Original STraTS
+
+# mTAND STraTS
 python -W ignore train.py  \
                     --train_job "mortality_model" \
-                    --output_dir "./logs_new/strats" \
-                    --data_dir "./mortality_datasets" \
+                    --output_dir "./logs_datasets_2/mtand_t_fv_ftv_32_2_4" \
+                    --data_dir "./mortality_datasets_2" \
+                    --custom_strats \
                     --with_demographics \
                     --weighted_class_weights \
                     --d 32 \
@@ -50,29 +52,28 @@ python -W ignore train.py  \
                     --ts_learning_rate 0.0005 \
                     --patience 10 \
                     --early_stopper_min_delta 0 \
-                    --early_stopper_mode "min" \
-                    --early_stopper_metric "LOSS" \
+                    --early_stopper_mode "max" \
+                    --early_stopper_metric "SUM_PR_AUC_ROC_AUC" \
                     --early_stopper_restore_best_weights \
                     --train_batch_size 32 \
                     --eval_batch_size 32 \
                     --lds 50 \
-                    --repeats 5 \
+                    --repeats 10 \
                     --num_epochs 100 \
 
 
-# mTAND STraTS
+# Original STraTS
 # python -W ignore train.py  \
 #                     --train_job "mortality_model" \
-#                     --output_dir "./logs_new/mtand_ft_ft_ftv_32_2_4" \
-#                     --data_dir "./mortality_datasets" \
-#                     --custom_strats \
+#                     --output_dir "./logs_datasets_2/strats_50_2_4_weighted" \
+#                     --data_dir "./mortality_datasets_2" \
 #                     --with_demographics \
-#                     --d 32 \
+#                     --weighted_class_weights \
+#                     --d 50 \
 #                     --N 2 \
 #                     --he 4 \
 #                     --dropout 0.2 \
 #                     --ts_learning_rate 0.0005 \
-#                     --gradient_accumulation_steps 1 \
 #                     --patience 10 \
 #                     --early_stopper_min_delta 0 \
 #                     --early_stopper_mode "max" \
@@ -81,7 +82,7 @@ python -W ignore train.py  \
 #                     --train_batch_size 32 \
 #                     --eval_batch_size 32 \
 #                     --lds 50 \
-#                     --repeats 5 \
+#                     --repeats 10 \
 #                     --num_epochs 100 \
 
 

@@ -1,7 +1,7 @@
 import torch.nn as nn
 import torch
 import numpy as np
-from module import CVE Attention, STraTS_Transformer
+from module import CVE, Attention, STraTS_Transformer
 
 
 
@@ -34,9 +34,9 @@ class STraTS(nn.Module):
         # Inputs: max_len * batch_size
         # To embed which feature is this value representing
         self.varis_stack = nn.Embedding(V+1, d)
-        # num_params = sum(p.numel() for p in self.varis_stack.parameters())
-        # print(f'varis_stack: {num_params}')
-        # total_parameters += num_params
+        num_params = sum(p.numel() for p in self.varis_stack.parameters())
+        print(f'varis_stack: {num_params}')
+        total_parameters += num_params
 
 
         # FFN to 'encode' the continuous values. Continuous Value Embedding (CVE)
@@ -44,18 +44,18 @@ class STraTS(nn.Module):
             hid_dim=cve_units, 
             output_dim=d
         )  
-        # num_params = sum(p.numel() for p in self.values_stack.parameters())
-        # print(f'values_stack: {num_params}')
-        # total_parameters += num_params
+        num_params = sum(p.numel() for p in self.values_stack.parameters())
+        print(f'values_stack: {num_params}')
+        total_parameters += num_params
         
         # FFN to 'encode' the continuous values. Continuous Value Embedding (CVE)
         self.times_stack = CVE(
             hid_dim=cve_units, 
             output_dim=d
         )        
-        # num_params = sum(p.numel() for p in self.times_stack.parameters())
-        # print(f'times_stack: {num_params}')
-        # total_parameters += num_params
+        num_params = sum(p.numel() for p in self.times_stack.parameters())
+        print(f'times_stack: {num_params}')
+        total_parameters += num_params
         
         
         # Transformer Output = batch_size * max_len * d
@@ -69,18 +69,18 @@ class STraTS(nn.Module):
             dropout=dropout, 
             epsilon=1e-07
         )
-        # num_params = sum(p.numel() for p in self.cont_stack.parameters())
-        # print(f'cont_stack: {num_params}')
-        # total_parameters += num_params
+        num_params = sum(p.numel() for p in self.cont_stack.parameters())
+        print(f'cont_stack: {num_params}')
+        total_parameters += num_params
         
         # Attention Output = batch_size * max_len * 1 
         self.attn_stack = Attention(
             d=d,
             hid_dim=2*d
         )
-        # num_params = sum(p.numel() for p in self.attn_stack.parameters())
-        # print(f'attn_stack: {num_params}')
-        # total_parameters += num_params
+        num_params = sum(p.numel() for p in self.attn_stack.parameters())
+        print(f'attn_stack: {num_params}')
+        total_parameters += num_params
         
         # Demographics Input : batch_size * D
         # Demographics Output: batch_size * d
@@ -91,9 +91,9 @@ class STraTS(nn.Module):
                 nn.Linear(in_features=2*d, out_features=d),
                 nn.Tanh()
             )
-        # num_params = sum(p.numel() for p in self.demo_stack.parameters())
-        # print(f'demo_stack: {num_params}')
-        # total_parameters += num_params
+        num_params = sum(p.numel() for p in self.demo_stack.parameters())
+        print(f'demo_stack: {num_params}')
+        total_parameters += num_params
         
         # Output Layer Inputs: Attention Weight * Time Series Embedding + Demographic Encoding = batch_size * (+d)
         
@@ -114,11 +114,11 @@ class STraTS(nn.Module):
                     nn.Sigmoid(),
                     nn.Flatten(start_dim=0)
                 )
-        # num_params = sum(p.numel() for p in self.output_stack.parameters())
-        # print(f'output_stack: {num_params}')
-        # total_parameters += num_params
+        num_params = sum(p.numel() for p in self.output_stack.parameters())
+        print(f'output_stack: {num_params}')
+        total_parameters += num_params
         
-        # print(f'Total Parameters: {total_parameters}')
+        print(f'Total Parameters: {total_parameters}')
     
     def forward(self, demo, times, values, varis):
         

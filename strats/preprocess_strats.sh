@@ -8,8 +8,9 @@
 #SBATCH --error=./error/error_%x_%j.err
 
 module load anaconda
-source activate fyp_strats
+source activate fyp_strats_37
 
 cd /home/FYP/szhong005/fyp/strats
 
-python ./STraTS/preprocess/preprocess_mimic_iii.py
+# python ./STraTS/preprocess/preprocess_mimic_iii.py
+python ./STraTS/preprocess/preprocess_physionet2012.py

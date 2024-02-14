@@ -1,10 +1,12 @@
 error
 output
 
-data
+data*
 physionet.org
-
+physionet_2012
+*.pkl
 mimic_iii*
+*.zip
 
 mortality_mimic_3_benchmark*
 forecast_datasets*
