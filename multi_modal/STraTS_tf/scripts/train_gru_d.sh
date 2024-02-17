@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --partition=SCSEGPU_UG 
 #SBATCH --qos=normal
-#SBATCH --gres=gpu:1
+
 #SBATCH --nodes=1
 #SBATCH --mem=16G
 #SBATCH --job-name=gru_d
@@ -10,15 +10,24 @@
 #SBATCH --nodelist=SCSEGPU-TC1-06
 
 module load anaconda
-source activate fyp_seft_37
+source activate fyp_strats_37
 
 cd /home/FYP/szhong005/fyp/multi_modal/STraTS_tf
 
 
 
 python gru_d.py  \
+        --dataset "physionet_2012" \
         --data_dir "./data_grud" \
-        --output_dir "./logs/gru_d" \
-        --n_units 60 --dropout 0.2 --recurrent_dropout 0.2 \
+        --output_dir "./logs_physionet/grud" \
+        --model "GRUD" \
         --lr 0.0001 --batch_size 32 --patience 10 \
+        --lds 50 --repeats 10
+
+python gru_d.py  \
+        --dataset "physionet_2012" \
+        --data_dir "./data_seft" \
+        --output_dir "./logs_physionet/seft" \
+        --model "SeFT" \
+        --lr 0.00081 --batch_size 32 --patience 10 \
         --lds 50 --repeats 10

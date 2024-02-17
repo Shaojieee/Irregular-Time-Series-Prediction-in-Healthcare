@@ -65,41 +65,94 @@ cd /home/FYP/szhong005/fyp/multi_modal/STraTS_tf
 
 
 
+# python -W ignore train.py  \
+#                     --output_dir "./logs_physionet/32_2_4_test" \
+#                     --data_dir "./new_data_physionet_mortality_0_48_800" \
+#                     --with_demo \
+#                     --max_len 800 \
+#                     --len_time_query 200 \
+#                     --model_type "strats" \
+#                     --d_mtand 32 \
+#                     --N_mtand 0 \
+#                     --he_mtand 8 \
+#                     --dropout_mtand 0.2 \
+#                     --d_demo 32 \
+#                     --d_strats 32 \
+#                     --N_strats 2 \
+#                     --he_strats 4 \
+#                     --dropout_strats 0.2 \
+#                     --lr 0.0005 \
+#                     --patience 10 \
+#                     --batch_size 32 \
+#                     --lds 100,10 \
+#                     --repeats 10
+
+
 python -W ignore train.py  \
-                    --output_dir "./logs_physionet/32_2_4_32_0_8_mtand_strats_200_mask_negative_2" \
-                    --data_dir "./data_physionet_mortality_0_48_800" \
+                    --output_dir "./logs_physionet/32_2_4_32_0_8_mtand_strats_200" \
+                    --data_dir "./new_data_physionet_mortality_0_48_800" \
                     --with_demo \
                     --max_len 800 \
                     --len_time_query 200 \
                     --model_type "mtand_strats" \
                     --d_mtand 32 \
+                    --N_mtand 0 \
+                    --he_mtand 8 \
+                    --dropout_mtand 0.2 \
                     --d_demo 32 \
-                    --d 32 \
-                    --N 2 \
-                    --he 4 \
-                    --dropout 0.2 \
+                    --d_strats 32 \
+                    --N_strats 2 \
+                    --he_strats 4 \
+                    --dropout_strats 0.2 \
                     --lr 0.0005 \
                     --patience 10 \
                     --batch_size 32 \
                     --lds 50 \
-                    --repeats 10
-
+                    --repeats 20
 
 
 # python -W ignore train.py  \
-#                     --output_dir "./logs_physionet/32_2_4" \
-#                     --data_dir "./data_physionet_mortality_0_48_800" \
+#                     --output_dir "./logs_physionet/32_2_4_strats_0_24" \
+#                     --data_dir "./new_data_physionet_mortality_0_24_470" \
 #                     --with_demo \
-#                     --max_len 800 \
-#                     --d 32 \
-#                     --N 2 \
-#                     --he 4 \
-#                     --dropout 0.2 \
-#                     --lr 0.001 \
+#                     --max_len 470 \
+#                     --len_time_query 200 \
+#                     --model_type "strats" \
+#                     --d_mtand 32 \
+#                     --N_mtand 0 \
+#                     --he_mtand 8 \
+#                     --dropout_mtand 0.2 \
+#                     --d_demo 32 \
+#                     --d_strats 32 \
+#                     --N_strats 2 \
+#                     --he_strats 4 \
+#                     --dropout_strats 0.2 \
+#                     --lr 0.0005 \
 #                     --patience 10 \
 #                     --batch_size 32 \
-#                     --lds 100 \
+#                     --lds 50 \
 #                     --repeats 10
+
+# python -W ignore train.py  \
+#                     --output_dir "./logs_physionet/32_2_4_2" \
+#                     --data_dir "./new_data_physionet_mortality_0_48_800" \
+#                     --with_demo \
+#                     --max_len 800 \
+#                     --model_type "strats" \
+#                     --len_time_query 200 \
+#                     --d_demo 32 \
+#                     --d_strats 32 \
+#                     --N_strats 2 \
+#                     --he_strats 4 \
+#                     --d_mtand 32 \
+#                     --N_mtand 0 \
+#                     --he_mtand 8 \
+#                     --dropout 0.2 \
+#                     --lr 0.0005 \
+#                     --patience 10 \
+#                     --batch_size 32 \
+#                     --lds 50 \
+#                     --repeats 20
 
 
 

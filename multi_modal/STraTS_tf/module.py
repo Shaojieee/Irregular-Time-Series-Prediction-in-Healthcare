@@ -670,13 +670,13 @@ class ImputedMultiTimeAttentionV1(Layer):
 
         
         latent_cve = K.concatenate(mha_ops, axis=-1)  # b,time_query, features, num_heads
-
+        print(f'latent_cve: {latent_cve.get_shape()}')
         latent_cve = K.tanh(K.bias_add(K.dot(K.permute_dimensions(latent_cve, (0,2,1,3)), self.Wc), self.bc)) # b, features, time_query, num_heads -> b, features, time_query, d
-
+        print(f'latent_cve: {latent_cve.get_shape()}')
         x = K.tanh(K.bias_add(K.dot((K.permute_dimensions(latent_cve, (0,2,3,1))), self.Wo_1), self.bo_1)) # b,time_query, d, feature -> b,time_query, d, sqrt(num_features)
-
+        print(f'x: {x.get_shape()}')
         x = K.bias_add(K.squeeze(K.dot(x, self.Wo_2), axis=-1), self.bo_2) # b, time_query, d, 1 -> b, time_query, d
-        
+        print(f'x: {x.get_shape()}')
         return x
 
 

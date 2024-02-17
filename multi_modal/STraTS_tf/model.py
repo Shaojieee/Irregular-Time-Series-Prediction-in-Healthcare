@@ -326,7 +326,7 @@ def build_strats(D, max_len, V, d, N, he, dropout, forecast=False, with_demo=Tru
     return model
 
 
-def build_mtand_strats(D, max_len, len_time_query, len_time_key, V, d_mtand, d_strats, N, he, dropout, forecast=False, with_demo=True):
+def build_mtand_strats(D, V, max_len, d_strats, N_strats, he_strats, dropout_strats, len_time_query, len_time_key, d_mtand, N_mtand, he_mtand, dropout_mtand, forecast=False, with_demo=True):
 
     if with_demo:
         demo = Input(shape=(D,))
@@ -349,59 +349,39 @@ def build_mtand_strats(D, max_len, len_time_query, len_time_key, V, d_mtand, d_s
 
     strats_irregular_emb = Add()([strats_varis_emb, strats_values_emb, strats_times_emb]) # b, L, d
     strats_mask = Lambda(lambda x:K.clip(x,0,1))(strats_varis) # b, L
-    strats_emb = Transformer(N, he, dk=None, dv=None, dff=None, dropout=dropout)(strats_irregular_emb, mask=strats_mask)
+    strats_emb = Transformer(N_strats, he_strats, dk=None, dv=None, dff=None, dropout=dropout_strats)(strats_irregular_emb, mask=strats_mask)
     strats_attn_weights = Attention(2*d_strats)(strats_emb, mask=strats_mask)
     strats_fused_emb = Lambda(lambda x:K.sum(x[0]*x[1], axis=-2))([strats_emb, strats_attn_weights])
 
-    # mTAND model
+    # mTAND
     mtand_time_query = Input(shape=(len_time_query,))
     mtand_time_key = Input(shape=(len_time_key,))
     mtand_feature_matrix = Input(shape=(len_time_key, V))
     mtand_feature_mask = Input(shape=(len_time_key, V))
 
+    
     cve_units = int(np.sqrt(d_mtand))
     mtand_time_encoder_block = CVE(cve_units,d_mtand)
 
     mtand_query_emb = mtand_time_encoder_block(mtand_time_query)
     mtand_key_emb = mtand_time_encoder_block(mtand_time_key)
-    mtand_regular_emb = ImputedMultiTimeAttentionV1(h=8, dropout=dropout)([mtand_query_emb, mtand_key_emb, mtand_feature_matrix], mask=mtand_feature_mask) # b,time_query, d
 
-    # mtand_fused_emb = mtand_regular_emb[:,-1,:]
+    # mtand_regular_emb = ImputedMultiTimeAttentionV1(h=he_mtand, dropout=dropout_mtand)([mtand_query_emb, mtand_key_emb, mtand_feature_matrix], mask=mtand_feature_mask) # b,time_query, d
+
+    # Actual mtand
+    mtand_value = Concatenate(axis=-1)([mtand_feature_matrix, mtand_feature_mask])
+    mtand_value_mask = Concatenate(axis=-1)([mtand_feature_mask, mtand_feature_mask])
+    mtand_regular_emb = ImputedMultiTimeAttentionV1(h=he_mtand, dropout=dropout_mtand)([mtand_query_emb, mtand_key_emb, mtand_value], mask=mtand_value_mask) # b,time_query, d
+
     
-    # mtand_emb = Transformer(1, he, dk=None, dv=None, dff=None, dropout=dropout)(mtand_regular_emb)
-    # mtand_mask = Lambda(lambda x: K.zeros_like(x)[:,:,0])(mtand_regular_emb)
+    if N_mtand>0:
+        mtand_emb = Transformer(N_mtand, he_mtand, dk=None, dv=None, dff=None, dropout=dropout_strats)(mtand_regular_emb)
+    else:
+        mtand_emb = mtand_regular_emb
     
-    mtand_attn_weights = Attention(2*d_mtand)(mtand_regular_emb)
-    mtand_fused_emb = Lambda(lambda x:K.sum(x[0]*x[1], axis=-2))([mtand_regular_emb, mtand_attn_weights])
-    # mtand_fused_emb = Dense(d_strats, activation='tanh')(mtand_regular_emb)
+    mtand_attn_weights = Attention(2*d_mtand)(mtand_emb)
+    mtand_fused_emb = Lambda(lambda x:K.sum(x[0]*x[1], axis=-2))([mtand_emb, mtand_attn_weights])
     
-    
-    # Combine
-    # strats_unsqueeze = Reshape((1, d_strats))(strats_fused_emb) 
-    # mtand_unsqueeze = Reshape((1, d_strats))(mtand_fused_emb) 
-    # cont_emb = Concatenate(axis=-2)([strats_unsqueeze, mtand_unsqueeze]) # b, 2, d
-    # print(cont_emb.shape)
-    # attn_weights = Attention(2*d_strats)(cont_emb)
-    # print(attn_weights.shape)
-    # fused_emb = Lambda(lambda x:K.sum(x[0]*x[1], axis=-2))([cont_emb, attn_weights])
-    # print(fused_emb.shape)
-
-
-    # last_mtand_emb = mtand_cont_emb[:,-1,:]
-
-    # print(last_mtand_emb.shape)
-    # # Combining both mTAND and STraTS encoding
-    # mtand_emb = Reshape((1, d))(last_mtand_emb) # b,1,d
-    # print(mtand_emb.shape)
-    # print(last_strats_emb.shape)
-    # strats_emb = Reshape((1, d))(last_strats_emb) #b,1,d
-    # print(strats_emb.shape)
-    # fused_emb = Concatenate(axis=-2)([mtand_emb, strats_emb]) #b,2,d
-    # print(fused_emb.shape)
-    # fusion_attn_weights = Attention(2*d)(fused_emb)
-    # final_emb = Lambda(lambda x:K.sum(x[0]*x[1], axis=-2))([fused_emb, fusion_attn_weights])
-    # print(fusion_attn_weights.shape)
-
 
     if with_demo:
         conc = Concatenate(axis=-1)([mtand_fused_emb, strats_fused_emb, demo_enc])
@@ -445,8 +425,13 @@ def build_mtand(D, len_time_query, len_time_key, V, d_mtand, d_demo, N, he, drop
     mtand_regular_emb = ImputedMultiTimeAttentionV1(h=he, dropout=dropout)([time_query_emb, time_key_emb, feature_matrix], mask=feature_mask) # b,time_query, d
     # cont_emb = Transformer(N, he, dk=None, dv=None, dff=None, dropout=dropout)(mtand_regular_emb)
 
-    attn_weights = Attention(2*d_mtand)(mtand_regular_emb)
-    fused_emb = Lambda(lambda x:K.sum(x[0]*x[1], axis=-2))([mtand_regular_emb, attn_weights])
+    if N>0:
+        mtand_emb = Transformer(N, he, dk=None, dv=None, dff=None, dropout=dropout)(mtand_regular_emb)
+    else:
+        mtand_emb = mtand_regular_emb
+
+    attn_weights = Attention(2*d_mtand)(mtand_emb)
+    fused_emb = Lambda(lambda x:K.sum(x[0]*x[1], axis=-2))([mtand_emb, attn_weights])
 
 
     if with_demo:
@@ -458,7 +443,6 @@ def build_mtand(D, len_time_query, len_time_key, V, d_mtand, d_demo, N, he, drop
             fore_model = Model([demo, time_key, feature_matrix, feature_mask, time_query], fore_op)
             return [model, fore_model]
     else:
-        # conc = Concatenate(axis=-1)([cont_emb, last_strats_emb])
         fore_op = Dense(V)(fused_emb)
         op = Dense(1, activation='sigmoid')(fore_op)
         model = Model([time_key, feature_matrix, feature_mask, time_query], op)

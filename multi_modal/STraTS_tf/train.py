@@ -24,13 +24,17 @@ def train(args):
     repeats = {k:args.repeats for k in lds}
     
     batch_size, lr, patience = args.batch_size, args.lr, args.patience
-    d, N, he, dropout = args.d, args.N, args.he, args.dropout
+    # STraTS args
+    d_strats, N_strats, he_strats, dropout_strats = args.d_strats, args.N_strats, args.he_strats, args.dropout_strats
+    # mTAND args
+    d_mtand, N_mtand, he_mtand, len_time_query, max_time, dropout_mtand = args.d_mtand, args.N_mtand, args.he_mtand, args.len_time_query, args.max_time, args.dropout_mtand
+
     max_len = args.max_len
 
     args.with_imputation = True if args.model_type=='imputed' else False
 
     if 'mtand' in args.model_type:
-        train_ip, train_op, valid_ip, valid_op, test_ip, test_op, D, V, len_time_key = load_mtand_mortality_dataset(args.data_dir, max_time=args.max_time, with_demo=args.with_demo, len_time_query=args.len_time_query)
+        train_ip, train_op, valid_ip, valid_op, test_ip, test_op, D, V, len_time_key = load_mtand_mortality_dataset(args.data_dir, max_time=max_time, with_demo=args.with_demo, len_time_query=len_time_query)
     else:
         train_ip, train_op, valid_ip, valid_op, test_ip, test_op, D, V = load_mortality_dataset(args.data_dir, with_demo=args.with_demo, with_imputation=args.with_imputation)
     
@@ -53,17 +57,21 @@ def train(args):
     np.random.seed(2021)
     for ld in lds:
         logs = {'val_metric':[], 'roc_auc':[], 'pr_auc':[], 'min_rp':[], 'loss':[], 'save_path':[]}
-        np.random.shuffle(train_inds)
-        np.random.shuffle(valid_inds)
-        train_starts = [int(i) for i in np.linspace(0, len(train_inds)-int(ld*len(train_inds)/100), repeats[ld])]
-        valid_starts = [int(i) for i in np.linspace(0, len(valid_inds)-int(ld*len(valid_inds)/100), repeats[ld])]
+        
+        # train_starts = [int(i) for i in np.linspace(0, len(train_inds)-int(ld*len(train_inds)/100), repeats[ld])]
+        # valid_starts = [int(i) for i in np.linspace(0, len(valid_inds)-int(ld*len(valid_inds)/100), repeats[ld])]
         # f.write('Training on '+str(ld)+' % of labaled data+\n'+'val_metric,roc_auc,pr_auc,min_rp,savepath\n')
         all_test_res = []
         for i in range(repeats[ld]):
             print ('Repeat', i, 'ld', ld)
             # Get train and validation data.
-            curr_train_ind = train_inds[np.arange(train_starts[i], train_starts[i]+int(ld*len(train_inds)/100))]
-            curr_valid_ind = valid_inds[np.arange(valid_starts[i], valid_starts[i]+int(ld*len(valid_inds)/100))]
+            # curr_train_ind = train_inds[np.arange(train_starts[i], train_starts[i]+int(ld*len(train_inds)/100))]
+            # curr_valid_ind = valid_inds[np.arange(valid_starts[i], valid_starts[i]+int(ld*len(valid_inds)/100))]
+            np.random.shuffle(train_inds)
+            np.random.shuffle(valid_inds)
+            curr_train_ind = np.random.choice(train_inds, size=int(ld*len(train_inds)), replace=False)
+            curr_valid_ind = np.random.choice(valid_inds, int(ld*len(valid_inds)), replace=False)
+            print(f'Train : {len(curr_train_ind)} Val: {len(curr_valid_ind)}')
             curr_train_ip = [ip[curr_train_ind] for ip in train_ip]
             curr_valid_ip = [ip[curr_valid_ind] for ip in valid_ip]
             curr_train_op = train_op[curr_train_ind]
@@ -75,17 +83,20 @@ def train(args):
             print (savepath)
             # Build and compile model.
             if args.model_type=='imputed':
-                model, fore_model =  build_imputed_strats(D, max_len, V, d, N, he, dropout, forecast=True, with_demo=args.with_demo)
+                model, fore_model =  build_imputed_strats(D, max_len, V, d_strats, N_strats, he_strats, dropout_strats, forecast=True, with_demo=args.with_demo)
             elif args.model_type=='custom':
-                model, fore_model =  build_modified_strats(D, max_len, V, d, N, he, dropout, forecast=True, with_demo=args.with_demo)
+                model, fore_model =  build_modified_strats(D, max_len, V, d_strats, N_strats, he_strats, dropout_strats, forecast=True, with_demo=args.with_demo)
             elif args.model_type=='special': 
-                model, fore_model =  build_special_strats(D, max_len, V, d, N, he, dropout, forecast=True, with_demo=args.with_demo)
+                model, fore_model =  build_special_strats(D, max_len, V, d_strats, N_strats, he_strats, dropout_strats, forecast=True, with_demo=args.with_demo)
             elif args.model_type=='mtand_strats':
-                model,fore_model = build_mtand_strats(D, max_len, args.len_time_query, len_time_key, V, args.d_mtand, args.d_demo, N, he, dropout, forecast=True, with_demo=args.with_demo)
+                model,fore_model = build_mtand_strats(D, V, max_len, d_strats, N_strats, he_strats, dropout_strats, len_time_query, len_time_key, d_mtand, N_mtand, he_mtand, dropout_mtand, forecast=True, with_demo=args.with_demo)
             elif args.model_type=='mtand':
-                model, fore_model = build_mtand(D, args.len_time_query, len_time_key, V, args.d_mtand, args.d_demo, N, he, dropout, forecast=True, with_demo=args.with_demo)
+                model, fore_model = build_mtand(D, args.len_time_query, len_time_key, V, d_mtand, args.d_demo, N_mtand, he_mtand, dropout_mtand, forecast=True, with_demo=args.with_demo)
+            elif args.model_type=='strats':
+                model, fore_model =  build_strats(D, max_len, V, d_strats, N_strats, he_strats, dropout_strats, forecast=True, with_demo=args.with_demo)
             else:
-                model, fore_model =  build_strats(D, max_len, V, d, N, he, dropout, forecast=True, with_demo=args.with_demo)
+                print('Model not found')
+                return
 
             model.compile(loss=mortality_loss, optimizer=Adam(lr))
             fore_model.compile(loss=build_forecast_loss(V), optimizer=Adam(lr))
@@ -111,7 +122,7 @@ def train(args):
             rocauc, prauc, minrp, test_loss = get_res(test_op, model.predict(test_ip, verbose=0, batch_size=batch_size))
             # f.write(str(np.min(his['custom_metric']))+str(rocauc)+str(prauc)+str(minrp)+savepath+'\n')
             
-            logs['val_metric'].append(np.max(his['val_loss']));logs['roc_auc'].append(rocauc);logs['pr_auc'].append(prauc);
+            logs['val_metric'].append(np.max(his['custom_metric']));logs['roc_auc'].append(rocauc);logs['pr_auc'].append(prauc);
             logs['min_rp'].append(minrp);logs['loss'].append(test_loss);logs['save_path'].append(savepath);
             
             print ('Test results: ', rocauc, prauc, minrp, test_loss)

@@ -29,19 +29,28 @@ cd /home/FYP/szhong005/fyp/multi_modal/STraTS_tf
 
 
 
+python -W ignore data.py  \
+                    --type "mortality" \
+                    --output_dir "./new_data_physionet_mortality_0_24_470" \
+                    --data_path "./physionet_2012_preprocessed.pkl" \
+                    --start_hour 0 \
+                    --end_hour 24 \
+                    --num_obs 470 \
+                    --dataset "physionet_2012" \
+
 # python -W ignore data.py  \
-#                     --type "mortality" \
-#                     --output_dir "./data_physionet_mortality_42_48_120" \
+#                     --type "forecast" \
+#                     --output_dir "./data_physionet_forecast" \
 #                     --data_path "./physionet_2012_preprocessed.pkl" \
-#                     --start_hour 42 \
-#                     --end_hour 48 \
-#                     --num_obs 120 \
+#                     --num_obs 800 \
 #                     --dataset "physionet_2012" \
 
 python -W ignore data.py  \
                     --type "mtand" \
-                    --output_dir "./data_physionet_mortality_0_48_800" \
-                    --data_path "./data_physionet_mortality_0_48_1498" \
+                    --output_dir "./new_data_physionet_mortality_0_24_470" \
+                    --data_path "./new_data_physionet_mortality_0_48_1497" \
+                    --start_hour 0 \
+                    --end_hour 24 \
     
 
 

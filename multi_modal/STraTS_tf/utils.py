@@ -25,10 +25,9 @@ def parse_args():
         "--max_time",
         type=int,
         default=48,
-        help="Max Timing for dataset",
+        help="Max Timing for time query",
     )
     parser.add_argument('--with_demo', action='store_true')
-    parser.add_argument('--with_imputation', action='store_true')
     parser.add_argument(
         "--output_dir", type=str, default=None, help="forecasting_model or mortality_model"
     )
@@ -39,18 +38,54 @@ def parse_args():
         "--model_type", type=str, default='default', help="custom or special or imputed or mtand_strats or mtand"
     )
     parser.add_argument(
-        "--len_time_query", type=int, default=48, help="For len of time query vector in mtand"
+        "--len_time_query", type=int, default=48, help="len of time query vector in mtand"
     )
     parser.add_argument(
-        "--d",
+        "--d_strats",
         type=int,
-        default=50,
+        default=32,
+        help="",
+    )
+    parser.add_argument(
+        "--N_strats",
+        type=int,
+        default=2,
+        help="",
+    )
+    parser.add_argument(
+        "--he_strats",
+        type=int,
+        default=4,
+        help="",
+    )
+    parser.add_argument(
+        "--dropout_strats",
+        type=float,
+        default=0.2,
         help="",
     )
     parser.add_argument(
         "--d_mtand",
         type=int,
-        default=128,
+        default=32,
+        help="",
+    )
+    parser.add_argument(
+        "--N_mtand",
+        type=int,
+        default=0,
+        help="",
+    )
+    parser.add_argument(
+        "--he_mtand",
+        type=int,
+        default=8,
+        help="",
+    )
+    parser.add_argument(
+        "--dropout_mtand",
+        type=float,
+        default=0.2,
         help="",
     )
     parser.add_argument(
@@ -60,27 +95,9 @@ def parse_args():
         help="",
     )
     parser.add_argument(
-        "--N",
-        type=int,
-        default=2,
-        help="",
-    )
-    parser.add_argument(
-        "--he",
-        type=int,
-        default=4,
-        help="",
-    )
-    parser.add_argument(
-        "--dropout",
-        type=float,
-        default=0.02,
-        help="Learning Rate",
-    )
-    parser.add_argument(
         "--lr",
         type=float,
-        default=0.0005,
+        default=0.005,
         help="Time Series Learning Rate",
     )
     parser.add_argument(
