@@ -1,20 +1,13 @@
 error
 output
 
-data*
+data_*
 physionet.org
 physionet_2012
 *.pkl
-mimic_iii*
 *.zip
-
-mortality_mimic_3_benchmark*
-forecast_datasets*
-mortality_datasets*
+mimic3-benchmarks*
 logs*
-Data
-run
-tensorboard_dir
 
 .DS_Store
 # Byte-compiled / optimized / DLL files
